@@ -1,0 +1,6 @@
+- never edit generated SDK by hand
+- never write generated tests into app-owned test directories
+- every API change must update Pydantic models, `openapi/openapi.yaml`, and `docs/contracts/*`
+- baseline updates require explicit human approval
+- QA automation is the only delivery track in the current phase
+- security research stays documented until QA automation closes phase one

@@ -1,0 +1,46 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+
+  - repo: local
+    hooks:
+      - id: web-lint
+        name: web lint
+        entry: pnpm --filter @agentshield/web lint
+        language: system
+        pass_filenames: false
+
+      - id: web-typecheck
+        name: web typecheck
+        entry: pnpm --filter @agentshield/web typecheck
+        language: system
+        pass_filenames: false
+
+      - id: api-lint
+        name: api lint
+        entry: uv run --project apps/api ruff check app tests
+        language: system
+        pass_filenames: false
+
+      - id: api-typecheck
+        name: api typecheck
+        entry: uv run --project apps/api pyright app tests
+        language: system
+        pass_filenames: false
+
+      - id: api-test
+        name: api test
+        entry: uv run --project apps/api pytest
+        language: system
+        pass_filenames: false
+
+      - id: openapi-check
+        name: openapi consistency
+        entry: uv run --project apps/api python scripts/export_openapi.py --check
+        language: system
+        pass_filenames: false

@@ -1,0 +1,20 @@
+{
+  "name": "agent-shield-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @agentshield/web dev",
+    "build:web": "pnpm --filter @agentshield/web build",
+    "lint:web": "pnpm --filter @agentshield/web lint",
+    "typecheck:web": "pnpm --filter @agentshield/web typecheck",
+    "test:web": "pnpm --filter @agentshield/web test",
+    "lint:api": "uv run --project apps/api ruff check app tests",
+    "typecheck:api": "uv run --project apps/api pyright app tests",
+    "test:api": "uv run --project apps/api pytest",
+    "check:openapi": "uv run --project apps/api python scripts/export_openapi.py --check",
+    "lint": "pnpm lint:web && pnpm lint:api",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:api",
+    "test": "pnpm test:web && pnpm test:api",
+    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi"
+  }
+}

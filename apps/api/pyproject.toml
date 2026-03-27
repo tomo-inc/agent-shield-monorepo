@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentshield-api"
+version = "0.1.0"
+description = "FastAPI backend for AgentShield QA automation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "pydantic>=2.10,<3.0",
+  "uvicorn>=0.34,<1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1.0",
+  "pytest>=8.3,<9.0",
+  "pyright>=1.1.396,<2.0",
+  "pyyaml>=6.0,<7.0",
+  "ruff>=0.11,<1.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.pyright]
+include = ["app", "tests"]
+typeCheckingMode = "standard"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
