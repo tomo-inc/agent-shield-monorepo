@@ -1,9 +1,9 @@
 # Smoke Tests
 
-这里保留跨应用 smoke tests。
+This directory is reserved for cross-application smoke tests.
 
-当前阶段先由 API 单测和 OpenAPI consistency check 兜底，后续再补：
+In the current phase, API unit tests and the OpenAPI consistency check provide the minimum safety net. The following smoke tests can be added later:
 
 - API smoke
-- 端到端流程 smoke
+- end-to-end flow smoke
 - baseline compare smoke

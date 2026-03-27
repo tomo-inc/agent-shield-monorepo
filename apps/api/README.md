@@ -1,8 +1,8 @@
 # AgentShield API
 
-FastAPI 后端，当前只提供 Phase 1 的最小能力目录与健康检查。
+FastAPI backend with a minimal Phase 1 scaffold and health-check endpoints.
 
-后续所有 API 变更都必须同步更新：
+Every future API change must update the following together:
 
 - `app/schemas/*`
 - `openapi/openapi.yaml`

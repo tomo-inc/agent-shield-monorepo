@@ -26,10 +26,10 @@ export default function Home() {
           AgentShield Phase 1
         </p>
         <h1 style={{ margin: "12px 0", fontSize: "clamp(2.4rem, 6vw, 4.4rem)" }}>
-          QA 自动化先行，安全能力后置
+          QA automation first, security work later
         </h1>
         <p style={{ maxWidth: "680px", color: "var(--muted)", fontSize: "1.05rem" }}>
-          当前仓库按 AI Agent 友好型开发指南落成 monorepo，并把 QA 自动化能力作为唯一第一优先级。
+          This repository is scaffolded as an AI-agent-friendly monorepo, with QA automation set as the only top priority for the current phase.
         </p>
       </section>
 
@@ -48,7 +48,7 @@ export default function Home() {
             padding: "20px",
           }}
         >
-          <h2>当前焦点</h2>
+          <h2>Current Focus</h2>
           <p style={{ color: "var(--muted)" }}>{currentFocus()}</p>
         </article>
 
@@ -60,7 +60,7 @@ export default function Home() {
             padding: "20px",
           }}
         >
-          <h2>必备治理文件</h2>
+          <h2>Required Governance Files</h2>
           <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--muted)" }}>
             {governanceFiles.map((file) => (
               <li key={file}>{file}</li>
@@ -77,7 +77,7 @@ export default function Home() {
           padding: "24px",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>本阶段优先级</h2>
+        <h2 style={{ marginTop: 0 }}>Current Phase Priorities</h2>
         <ol style={{ margin: 0, paddingLeft: "20px", display: "grid", gap: "10px" }}>
           {priorities.map((item) => (
             <li key={item}>{item}</li>

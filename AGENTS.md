@@ -3,13 +3,13 @@
 - `openapi/openapi.yaml`
 - `docs/contracts/*`
 - `apps/api/app/schemas/*`
-- `docs/Ai Agent 友好型 开发指南.docx`
-- `docs/AagentShield QA自动化功能 可行性调研.docx`
+- `docs/requirements/qa-automation-scope.md`
+- `docs/requirements/security-phase-two.md`
 
 # Current Priority
 
-- Phase 1: QA 自动化能力
-- Phase 2: 安全类 Agent Shield 深化能力
+- Phase 1: QA automation
+- Phase 2: security-focused AgentShield capabilities
 
 # Rules
 
@@ -31,5 +31,5 @@
 
 # Delivery Constraint
 
-- 当前任何新增功能，默认优先服务于 QA 自动化主线。
-- 安全类需求只沉淀范围说明，不进入本阶段实现。
+- Any new work should default to the QA automation track.
+- Security-oriented requirements stay documented only and do not enter implementation in this phase.

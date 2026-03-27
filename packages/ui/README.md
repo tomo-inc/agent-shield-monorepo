@@ -1,5 +1,5 @@
 # UI
 
-未来共享 UI 组件放在这里。
+Future shared UI components belong here.
 
-当前阶段前端重点不是视觉资产，而是 QA 自动化能力的流程展示与结果读取。
+In the current phase, the frontend focus is not a visual component library. It is the presentation of the QA automation workflow and result consumption.

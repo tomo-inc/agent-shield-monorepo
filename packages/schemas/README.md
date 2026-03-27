@@ -1,5 +1,5 @@
 # Schemas
 
-这里用于沉淀跨应用共享的契约说明。
+This directory is reserved for shared cross-application contract notes.
 
-当前阶段以 `apps/api/app/schemas/*` + `openapi/openapi.yaml` 为单一真相源，后续如需生成前端类型或 SDK，再从这里统一收口。
+In the current phase, `apps/api/app/schemas/*` and `openapi/openapi.yaml` remain the single source of truth. Future frontend types or SDK generation can be centralized from here later.

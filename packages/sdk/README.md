@@ -1,6 +1,6 @@
 # SDK
 
-未来生成的 SDK 放在这里。
+Future generated SDK artifacts belong here.
 
 - source of truth: `openapi/openapi.yaml`
 - generated artifacts only
