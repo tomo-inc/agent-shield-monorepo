@@ -192,10 +192,50 @@ A failing check blocks the merge.
 
 ## Branch Strategy
 
+### Branch Roles
+
 | Branch | Purpose |
 |---|---|
-| `main` | Stable, CI must be green |
-| `dev` | Active development, merge to main via PR |
+| `main` | Production-ready. Clean linear history. Never push directly. Every commit represents one complete, reviewed delivery unit. |
+| `dev` | Integration branch. All feature and fix branches merge here first for combined CI validation before going to `main`. |
+| `feat/xxx` | New feature. Branched from `main`. |
+| `fix/xxx` | Bug fix. Branched from `main`. |
+| `hotfix/xxx` | Urgent production fix. Branched from `main`, merged to `main` first, then synced to `dev`. |
+
+### Workflow
+
+```
+main
+ │
+ ├── feat/payment-checker      (branched from main)
+ │        │
+ │        │  squash merge
+ │        ▼
+ │       dev  ← integration validation, CI must pass here first
+ │        │
+ │        │  PR + squash merge (one commit per feat/fix)
+ │        ▼
+ └──── main  ← clean history, one commit = one complete feature or fix
+```
+
+### Rules
+
+- **Always branch from `main`**, not from `dev`
+- **Squash merge into `dev`** — keeps dev history readable
+- **Squash merge into `main` via PR** — each feat/fix raises its own PR to `main` after passing `dev` validation
+- **Never push directly to `main`** — all changes go through a PR
+- **Hotfix goes to `main` first**, then cherry-pick or merge into `dev`
+
+### Commit Message Conventions
+
+| Prefix | When to use |
+|---|---|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `hotfix:` | Urgent production fix |
+| `chore:` | Tooling, config, dependency updates |
+| `docs:` | Documentation only |
+| `refactor:` | Code restructure with no behaviour change |
 
 ---
 
