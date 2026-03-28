@@ -40,4 +40,4 @@ jobs:
         run: uv sync --project apps/api --extra dev
 
       - name: Run quality gate
-        run: pnpm ci
+        run: pnpm run ci
