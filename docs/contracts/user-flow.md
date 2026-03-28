@@ -13,13 +13,13 @@ requested
 
 ## Failure Paths
 
-- `analyzed -> failed`: 目标仓库无法识别语言或测试框架
-- `generated -> failed`: 生成的测试无法通过静态校验
-- `executed -> regressed`: baseline pass 但本次 fail
-- `compared -> warning`: 覆盖率下降，但未到阻断阈值
+- `analyzed -> failed`: target repository language or test framework cannot be identified
+- `generated -> failed`: generated tests fail static validation
+- `executed -> regressed`: baseline passed but current run failed
+- `compared -> warning`: coverage dropped but did not reach the blocking threshold
 
 ## Success Standard
 
-- 调用方在一次流水线里拿到结构化测试报告
-- 报告至少包含通过数、失败数、回归结论、覆盖率变化
-- 任何 baseline 更新都必须显式触发
+- Caller receives a structured test report within a single pipeline run
+- Report must include at minimum: pass count, fail count, regression verdict, coverage delta
+- Any baseline update must be explicitly triggered

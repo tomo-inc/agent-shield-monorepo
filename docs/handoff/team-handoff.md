@@ -1,71 +1,71 @@
-# AgentShield 项目框架交接说明
+# AgentShield Project Handoff
 
-## 这是什么
+## What This Is
 
-这是 `AgentShield` 的主仓库框架，仓库目录名为 `agent-shield-monorepo`。
+This is the main repository for `AgentShield`, named `agent-shield-monorepo`.
 
-当前不是完整产品，而是第一版工程模板，目的是先把项目的统一开发结构、Agent 规则、基础代码骨架和 CI 模板搭起来，方便后续多人协作。
+This is not a complete product yet. It is the first-version engineering template, intended to establish a unified development structure, Agent rules, foundational code skeleton, and CI templates to support future team collaboration.
 
-## 当前阶段
+## Current Phase
 
-当前只做 Phase 1：
+Phase 1 only:
 
-- QA 自动化能力
+- QA automation capabilities
 
-当前不做 Phase 2：
+Phase 2 is not in scope:
 
-- 安全类 Agent Shield 深化能力
+- Security-focused AgentShield deep capabilities
 
-也就是说，现阶段所有设计和代码都优先服务于 QA 自动化，不进入安全模块实现。
+All current design and code should serve the QA automation track. Security modules are not to be implemented at this stage.
 
-## 为什么要用这个结构
+## Why This Structure
 
-项目结构遵循《AI Agent 友好型开发指南》，核心要求是：
+The project follows the AI Agent-Friendly Development Guide. Core requirements:
 
-- 必须使用 monorepo
-- 前端统一用 Next.js App Router
-- 后端统一用 FastAPI + Pydantic
-- 契约统一通过 OpenAPI 管理
-- 必须有 `AGENTS.md`、`CLAUDE.md`、`skillscloud.md`
-- 必须有 pre-commit 和 CI 质量门禁
+- Must use monorepo
+- Frontend uses Next.js App Router
+- Backend uses FastAPI + Pydantic
+- Contracts managed via OpenAPI
+- Must include `AGENTS.md`, `CLAUDE.md`, `skillscloud.md`
+- Must have pre-commit and CI quality gates
 
-## 当前已经完成的内容
+## What Is Already Done
 
-- Monorepo 目录结构已经搭好
-- 前端 `apps/web` 已有最小页面骨架
-- 后端 `apps/api` 已有 FastAPI 最小接口骨架
-- OpenAPI 文件已经落在 `openapi/openapi.yaml`
-- Agent 规则文件已经补齐
-- QA 自动化的契约文档已经补齐
-- GitHub Actions CI 模板已经创建
-- pre-commit 模板已经创建
+- Monorepo directory structure is in place
+- Frontend `apps/web` has a minimal page skeleton
+- Backend `apps/api` has a minimal FastAPI endpoint skeleton
+- OpenAPI file is at `openapi/openapi.yaml`
+- Agent rule files are complete
+- QA automation contract documents are complete
+- GitHub Actions CI template is created
+- pre-commit template is created
 
-## 当前目录说明
+## Directory Overview
 
 ```text
 apps/
-  web/                  Next.js 前端
-  api/                  FastAPI 后端
+  web/                  Next.js frontend
+  api/                  FastAPI backend
 packages/
-  schemas/              共享契约说明
-  sdk/                  未来生成 SDK 的位置
-  ui/                   未来共享 UI 组件的位置
+  schemas/              Shared contract types
+  sdk/                  Future generated SDK location
+  ui/                   Future shared UI components
 openapi/
-  openapi.yaml          API 契约文件
+  openapi.yaml          API contract file
 docs/
-  contracts/            用户流程、状态模型、测试规范
-  requirements/         分阶段需求说明
-  handoff/              交接文档
+  contracts/            User flow, state model, test spec
+  requirements/         Phase-scoped requirements
+  handoff/              Handoff documents
 .github/workflows/
-  ci.yml                CI 模板
-AGENTS.md               系统级规则
-CLAUDE.md               项目特殊补丁规则
-skillscloud.md          可复用流程说明
+  ci.yml                CI template
+AGENTS.md               System-level rules
+CLAUDE.md               Project-specific override rules
+skillscloud.md          Reusable workflow templates
 ```
 
-## 必看文档
+## Recommended Reading Order
 
-组员进入项目后，建议先按这个顺序看：
+New team members should read in this order:
 
 1. `README.md`
 2. `AGENTS.md`
@@ -74,45 +74,45 @@ skillscloud.md          可复用流程说明
 5. `docs/contracts/db-state-model.md`
 6. `docs/contracts/test-spec.md`
 
-如果要了解项目最初的输入材料，再看：
+For background on the original research inputs:
 
 - `docs/Ai Agent 友好型 开发指南.docx`
 - `docs/AagentShield QA自动化功能 可行性调研.docx`
 
-## 目前的真实状态
+## Current State
 
-这份仓库现在是“可交接的工程框架”，不是“已经能完整运行的业务系统”。
+This repository is a handoff-ready engineering framework, not a fully operational business system.
 
-目前已经明确的部分：
+What is clearly defined:
 
-- 项目结构
-- 技术栈方向
-- 阶段优先级
-- Agent 规则
-- CI 思路
-- QA 自动化的一阶契约
+- Project structure
+- Tech stack direction
+- Phase priorities
+- Agent rules
+- CI approach
+- First-order QA automation contracts
 
-目前还没有完全做完的部分：
+What is not yet complete:
 
-- 真正的业务模块实现
-- Analyzer / Generator / Runner / Tracker 的完整落地
-- 依赖安装和 lockfile 固化
-- CI 全链路跑通
+- Actual business module implementation
+- Full implementation of Analyzer / Generator / Runner / Tracker
+- Dependency installation and lockfile finalization
+- End-to-end CI pipeline validation
 
-## 协作建议
+## Collaboration Guidelines
 
-- 不要跳过 `AGENTS.md` 直接写代码
-- 新功能默认优先贴近 QA 自动化主线
-- 任何 API 变更都要同步改 `openapi/openapi.yaml`
-- 任何重要改动都优先补文档和契约
-- 安全类需求暂时只记录，不直接进入开发
+- Do not skip `AGENTS.md` before writing code
+- New features should default to the QA automation track
+- Any API change must be synced to `openapi/openapi.yaml`
+- Important changes should be documented in contracts first
+- Security requirements are to be recorded only, not implemented
 
-## 组员现在最适合接手什么
+## Recommended Starting Points
 
-比较适合并行推进的内容：
+Good areas to work on in parallel:
 
-- 继续细化 QA 自动化需求
-- 设计 Analyzer / Generator / Runner / Tracker 的 API contract
-- 完善前端展示页面
-- 补充 API 端点和测试
-- 补充本地开发和 CI 所需依赖
+- Refine QA automation requirements
+- Design API contracts for Analyzer / Generator / Runner / Tracker
+- Improve the frontend display page
+- Add API endpoints and tests
+- Set up local development and CI dependencies

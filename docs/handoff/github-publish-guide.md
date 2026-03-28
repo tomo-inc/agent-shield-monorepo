@@ -1,20 +1,20 @@
-# 本地项目发布到 GitHub 操作指南
+# Publishing to GitHub
 
-这份文档面向第一次把本地项目发到 GitHub 的同学。
+This guide is for first-time publishing of the local project to GitHub.
 
-## 目标
+## Goal
 
-把本地的 `agent-shield-monorepo` 发布到你自己的 GitHub 仓库。
+Publish the local `agent-shield-monorepo` to your own GitHub repository.
 
-## 先决条件
+## Prerequisites
 
-本机需要有：
+You need the following on your machine:
 
 - `git`
 - `gh` GitHub CLI
-- 已登录 GitHub
+- A logged-in GitHub account
 
-你可以先检查：
+Check your setup:
 
 ```bash
 git --version
@@ -22,153 +22,151 @@ gh --version
 gh auth status
 ```
 
-如果还没登录：
+If not logged in:
 
 ```bash
 gh auth login
 ```
 
-## 快速做法：用 gh 一条命令创建远程仓库并推送
+## Quick Method: Create and Push with One Command
 
-如果本地已经完成 `git init` 和首次 commit，可以直接在项目根目录执行：
+If you have already run `git init` and made the first commit locally, run this from the project root:
 
 ```bash
 gh repo create agent-shield-monorepo --private --source=. --remote=origin --push
 ```
 
-如果你想公开仓库，把 `--private` 换成 `--public`。
+To make the repository public, replace `--private` with `--public`.
 
-这条命令会做几件事：
+This command will:
 
-- 在 GitHub 上创建一个名为 `agent-shield-monorepo` 的仓库
-- 把当前本地目录绑定成 `origin`
-- 自动把当前分支推送上去
+- Create a repository named `agent-shield-monorepo` on GitHub
+- Bind the current local directory as `origin`
+- Push the current branch automatically
 
-## 标准做法：一步一步来
+## Step-by-Step Method
 
-### 1. 进入项目目录
+### 1. Navigate to the project directory
 
 ```bash
 cd /Users/admin/tomo_project/agent-shield-monorepo
 ```
 
-### 2. 初始化 Git 仓库
+### 2. Initialize the Git repository
 
 ```bash
 git init
 git branch -M main
 ```
 
-### 3. 查看当前文件
+### 3. Check current files
 
 ```bash
 git status
 ```
 
-### 4. 提交第一版代码
+### 4. Make the first commit
 
 ```bash
 git add .
 git commit -m "chore: scaffold agent-shield-monorepo"
 ```
 
-### 5. 在 GitHub 上创建仓库
+### 5. Create the repository on GitHub
 
-有两种方式：
-
-方式 A，用命令行：
+Option A — via command line:
 
 ```bash
 gh repo create agent-shield-monorepo --private
 ```
 
-方式 B，用网页手动创建：
+Option B — via the web:
 
-- 登录 GitHub
-- 点击 `New repository`
-- 仓库名填写 `agent-shield-monorepo`
-- 不要勾选自动生成 README
-- 创建完成
+- Log in to GitHub
+- Click `New repository`
+- Set the name to `agent-shield-monorepo`
+- Do not check auto-generate README
+- Click Create
 
-### 6. 绑定远程仓库
+### 6. Link the remote repository
 
-如果是网页创建，需要手动添加远程：
-
-```bash
-git remote add origin git@github.com:<你的GitHub用户名>/agent-shield-monorepo.git
-```
-
-如果你不用 SSH，也可以用 HTTPS：
+If created via the web, add the remote manually:
 
 ```bash
-git remote add origin https://github.com/<你的GitHub用户名>/agent-shield-monorepo.git
+git remote add origin git@github.com:<your-github-username>/agent-shield-monorepo.git
 ```
 
-### 7. 推送到 GitHub
+Or via HTTPS:
+
+```bash
+git remote add origin https://github.com/<your-github-username>/agent-shield-monorepo.git
+```
+
+### 7. Push to GitHub
 
 ```bash
 git push -u origin main
 ```
 
-## 以后日常提交流程
+## Daily Commit Workflow
 
-每次改完代码，建议按这个顺序：
+After making changes:
 
 ```bash
 git status
 git add .
-git commit -m "feat: 描述本次改动"
+git commit -m "feat: describe your change"
 git push
 ```
 
-## 常见问题
+## Common Issues
 
-### 1. 报错：not a git repository
+### Error: not a git repository
 
-说明你还没有在项目根目录执行 `git init`。
+You have not run `git init` in the project root yet.
 
-### 2. 报错：remote origin already exists
+### Error: remote origin already exists
 
-说明远程已经加过了，可以先查看：
+The remote is already configured. Check it:
 
 ```bash
 git remote -v
 ```
 
-如果要替换：
+To replace it:
 
 ```bash
 git remote remove origin
-git remote add origin git@github.com:<你的GitHub用户名>/agent-shield-monorepo.git
+git remote add origin git@github.com:<your-github-username>/agent-shield-monorepo.git
 ```
 
-### 3. 报错：permission denied
+### Error: permission denied
 
-通常是 GitHub 认证没配好。
+GitHub authentication is not configured correctly.
 
-先检查：
+Check:
 
 ```bash
 gh auth status
 ```
 
-如果你走 SSH，需要确认本机 SSH key 已加到 GitHub。
+If using SSH, confirm your local SSH key has been added to GitHub.
 
-### 4. GitHub 上已经有同名仓库
+### A repository with the same name already exists on GitHub
 
-那就换一个仓库名，或者删掉远程仓库后重新创建。
+Use a different name, or delete the remote repository and recreate it.
 
-## 当前项目建议的首次发布命令
+## Recommended First-Publish Command
 
-如果本地已经初始化好 Git，最省事的是：
+If the local Git is already initialized:
 
 ```bash
 gh repo create agent-shield-monorepo --private --source=. --remote=origin --push
 ```
 
-## 给组员的建议
+## For New Team Members
 
-组员拿到仓库后，先不要急着改业务逻辑，先看这些文件：
+Before touching any business logic, read these files first:
 
 - `README.md`
 - `AGENTS.md`

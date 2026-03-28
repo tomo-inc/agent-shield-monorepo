@@ -1,40 +1,40 @@
-# QA 自动化 Phase 1 范围
+# QA Automation — Phase 1 Scope
 
-## 参考来源
+## Reference Sources
 
 - `docs/Ai Agent 友好型 开发指南.docx`
 - `docs/AagentShield QA自动化功能 可行性调研.docx`
 
-## 目标
+## Goal
 
-把测试从依赖人工的独立阶段，变成可被开发者、CI、上层 Agent 直接调用的自动化能力。
+Transform testing from a manual, isolated activity into an automated capability that can be invoked directly by developers, CI pipelines, and upstream Agents.
 
-## 要解决的问题
+## Problems to Solve
 
-- 测试覆盖率低，人工补测成本高
-- 回归测试边界不清，容易漏测
-- AI Agent 改完代码没有自验证信号
-- 测试风格不统一，维护成本高
-- 新功能上线前测试准备周期长
-- 覆盖率数字好看，但关键路径没被覆盖
+- Low test coverage with high cost to fill manually
+- Unclear regression boundaries leading to missed tests
+- No self-verification signal for AI Agents after code changes
+- Inconsistent test styles increasing maintenance cost
+- Long test preparation cycles before new feature releases
+- Coverage numbers look acceptable but critical paths remain untested
 
-## Phase 1 模块
+## Phase 1 Modules
 
-- `Analyzer`：代码识别、覆盖率缺口识别、边界条件推断
-- `Generator`：基于 few-shot 与项目风格的测试生成
-- `Runner`：统一执行多框架测试并输出标准结果
-- `Tracker`：baseline 管理与回归判定
+- `Analyzer`: code recognition, coverage gap identification, boundary condition inference
+- `Generator`: test generation using few-shot examples aligned to project style
+- `Runner`: unified multi-framework test execution with normalized output
+- `Tracker`: baseline management and regression detection
 
-## 当前不做
+## Out of Scope
 
-- 安全类 Agent Shield 深度能力建设
-- 面向终端用户的 IDE 插件
-- 重 UI 的 E2E 自动化平台
+- Security-focused AgentShield deep capabilities
+- IDE plugin for end users
+- Heavy-UI E2E automation platform
 
-## 首批交付物
+## Initial Deliverables
 
-- Monorepo 模板
-- 质量门禁模板
-- OpenAPI 契约
-- QA 自动化的契约文档
-- API 与前端骨架
+- Monorepo template
+- Quality gate template
+- OpenAPI contract
+- QA automation contract documents
+- API and frontend skeleton

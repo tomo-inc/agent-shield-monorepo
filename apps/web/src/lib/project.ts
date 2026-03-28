@@ -4,6 +4,4 @@ export const priorities = [
   "Security-focused AgentShield work deferred to Phase 2",
 ];
 
-export function currentFocus(): string {
-  return priorities[0];
-}
+export const currentFocus: string = priorities[0];

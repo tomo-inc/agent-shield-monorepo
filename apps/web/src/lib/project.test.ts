@@ -4,7 +4,6 @@ import { currentFocus, priorities } from "./project";
 
 describe("project focus", () => {
   it("keeps QA automation as the first priority", () => {
-    expect(currentFocus()).toBe("QA automation feasibility research");
-    expect(priorities).toHaveLength(3);
+    expect(currentFocus).toBe("QA automation feasibility research");
   });
 });

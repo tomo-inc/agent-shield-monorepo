@@ -6,18 +6,18 @@ from app.schemas.qa import Capability, CapabilityCatalog, HealthResponse
 
 APP_TITLE: Final[str] = "AgentShield QA Automation API"
 APP_VERSION: Final[str] = "0.1.0"
+ACTIVE_FOCUS: Final[str] = "qa-automation"
+CURRENT_PHASE: Final[str] = "phase-1-qa-automation"
+REQUIRED_FILES: Final[list[str]] = ["AGENTS.md", "CLAUDE.md", "skillscloud.md"]
 
 app = FastAPI(
     title=APP_TITLE,
     version=APP_VERSION,
     summary="Phase 1 scaffold for QA automation",
-    description=(
-        "Monorepo-aligned FastAPI service for AgentShield. "
-        "Current scope is QA automation only."
-    ),
+    description="Monorepo-aligned FastAPI service for AgentShield. Current scope is QA automation only.",
 )
 
-CAPABILITIES: Final[list[Capability]] = [
+CAPABILITIES: Final[tuple[Capability, ...]] = (
     Capability(
         name="analyzer",
         description="Identify testable targets, risk hotspots, and coverage gaps.",
@@ -38,7 +38,17 @@ CAPABILITIES: Final[list[Capability]] = [
         description="Compare current runs to baseline snapshots and classify regressions.",
         status="planned",
     ),
-]
+)
+
+_HEALTH_RESPONSE: Final[HealthResponse] = HealthResponse(
+    status="ok", service="api", active_focus=ACTIVE_FOCUS
+)
+_CAPABILITIES_CATALOG: Final[CapabilityCatalog] = CapabilityCatalog(
+    product="AgentShield",
+    current_phase=CURRENT_PHASE,
+    required_files=REQUIRED_FILES,
+    capabilities=list(CAPABILITIES),
+)
 
 
 @app.get(
@@ -50,7 +60,7 @@ CAPABILITIES: Final[list[Capability]] = [
     response_description="Service health payload",
 )
 def healthz() -> HealthResponse:
-    return HealthResponse(status="ok", service="api", active_focus="qa-automation")
+    return _HEALTH_RESPONSE
 
 
 @app.get(
@@ -62,9 +72,4 @@ def healthz() -> HealthResponse:
     response_description="Current phase capability catalog",
 )
 def list_capabilities() -> CapabilityCatalog:
-    return CapabilityCatalog(
-        product="AgentShield",
-        current_phase="phase-1-qa-automation",
-        required_files=["AGENTS.md", "CLAUDE.md", "skillscloud.md"],
-        capabilities=CAPABILITIES,
-    )
+    return _CAPABILITIES_CATALOG
