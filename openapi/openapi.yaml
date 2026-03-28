@@ -1,106 +1,114 @@
 openapi: 3.1.0
 info:
   title: AgentShield QA Automation API
-  version: 0.1.0
   summary: Phase 1 scaffold for QA automation
-  description: Monorepo-aligned FastAPI service for AgentShield. Current scope is QA automation only.
-servers:
-  - url: http://localhost:8000
+  description: Monorepo-aligned FastAPI service for AgentShield. Current scope is
+    QA automation only.
+  version: 0.1.0
 paths:
   /healthz:
     get:
       tags:
-        - system
+      - system
       summary: Health check
       operationId: healthz
       responses:
-        "200":
+        '200':
           description: Service health payload
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                $ref: '#/components/schemas/HealthResponse'
   /api/v1/capabilities:
     get:
       tags:
-        - system
+      - system
       summary: List current phase capabilities
       operationId: listCapabilities
       responses:
-        "200":
+        '200':
           description: Current phase capability catalog
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CapabilityCatalog"
+                $ref: '#/components/schemas/CapabilityCatalog'
 components:
   schemas:
-    HealthResponse:
-      title: HealthResponse
-      type: object
-      required:
-        - status
-        - service
-        - active_focus
-      properties:
-        status:
-          title: Status
-          type: string
-          description: Health status
-        service:
-          title: Service
-          type: string
-          description: Service name
-        active_focus:
-          title: Active Focus
-          type: string
-          description: Current delivery focus
     Capability:
-      title: Capability
-      type: object
-      required:
-        - name
-        - description
-        - status
       properties:
         name:
-          title: Name
           type: string
+          title: Name
           description: Capability name
         description:
-          title: Description
           type: string
+          title: Description
           description: What the capability is responsible for
         status:
-          title: Status
           type: string
+          enum:
+          - planned
+          - scaffolded
+          - in-progress
+          - stable
+          title: Status
           description: Implementation status
-    CapabilityCatalog:
-      title: CapabilityCatalog
       type: object
       required:
-        - product
-        - current_phase
-        - required_files
-        - capabilities
+      - name
+      - description
+      - status
+      title: Capability
+    CapabilityCatalog:
       properties:
         product:
-          title: Product
           type: string
+          title: Product
           description: Product name
         current_phase:
-          title: Current Phase
           type: string
+          title: Current Phase
           description: Current roadmap phase
         required_files:
-          title: Required Files
-          type: array
-          description: Project governance files
           items:
             type: string
-        capabilities:
-          title: Capabilities
           type: array
-          description: Supported capabilities in this phase
+          title: Required Files
+          description: Project governance files
+        capabilities:
           items:
-            $ref: "#/components/schemas/Capability"
+            $ref: '#/components/schemas/Capability'
+          type: array
+          title: Capabilities
+          description: Supported capabilities in this phase
+      type: object
+      required:
+      - product
+      - current_phase
+      - required_files
+      - capabilities
+      title: CapabilityCatalog
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+          - error
+          title: Status
+          description: Health status
+        service:
+          type: string
+          title: Service
+          description: Service name
+        active_focus:
+          type: string
+          title: Active Focus
+          description: Current delivery focus
+      type: object
+      required:
+      - status
+      - service
+      - active_focus
+      title: HealthResponse

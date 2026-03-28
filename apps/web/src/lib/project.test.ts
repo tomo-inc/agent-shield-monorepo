@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { currentFocus, priorities } from "./project";
+import { currentFocus } from "./project";
 
 describe("project focus", () => {
   it("keeps QA automation as the first priority", () => {

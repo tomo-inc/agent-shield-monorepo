@@ -49,7 +49,7 @@ export default function Home() {
           }}
         >
           <h2>Current Focus</h2>
-          <p style={{ color: "var(--muted)" }}>{currentFocus()}</p>
+          <p style={{ color: "var(--muted)" }}>{currentFocus}</p>
         </article>
 
         <article
