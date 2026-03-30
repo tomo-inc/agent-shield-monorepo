@@ -14,6 +14,9 @@ __pycache__/
 .pyright/
 
 .qa-agent/generated/
+.qa-agent/runs/
+.qa-agent/scans/
+.agentshield/.env.local
 
 *.pyc
 *.pyo

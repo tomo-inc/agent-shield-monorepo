@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentshield_cli"]
+
+[project]
+name = "agentshield-cli"
+version = "0.1.0"
+description = "Mode 1 AgentShield Clean CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Tomo" }
+]
+keywords = [
+  "agentshield",
+  "cli",
+  "quality-gate",
+  "qa"
+]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Quality Assurance"
+]
+dependencies = [
+  "pydantic>=2.10,<3.0",
+  "pyyaml>=6.0,<7.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/tomo-inc/agent-shield-monorepo"
+Repository = "https://github.com/tomo-inc/agent-shield-monorepo"
+Issues = "https://github.com/tomo-inc/agent-shield-monorepo/issues"
+
+[project.optional-dependencies]
+dev = [
+  "pyright>=1.1.396,<2.0",
+  "pytest>=8.3,<9.0",
+  "ruff>=0.11,<1.0"
+]
+
+[project.scripts]
+agentshield = "agentshield_cli.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.pyright]
+include = ["agentshield_cli", "tests"]
+typeCheckingMode = "standard"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
