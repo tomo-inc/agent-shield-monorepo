@@ -32,6 +32,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapabilityCatalog'
+  /api/v1/panel/projects/register:
+    post:
+      tags:
+      - panel
+      summary: Register or update a panel project
+      operationId: registerPanelProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelProjectRegisterRequest'
+      responses:
+        '200':
+          description: Project registration result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectRegisterResponse'
+  /api/v1/panel/baselines:
+    post:
+      tags:
+      - panel
+      summary: Upload panel baseline snapshots
+      operationId: uploadPanelBaselines
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelBaselineUploadRequest'
+      responses:
+        '200':
+          description: Baseline upload result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelBaselineUploadResponse'
+  /api/v1/panel/runs:
+    post:
+      tags:
+      - panel
+      summary: Upload a panel run payload
+      operationId: uploadPanelRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelRunUploadRequest'
+      responses:
+        '200':
+          description: Run upload result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelRunUploadResponse'
+  /api/v1/panel/projects:
+    get:
+      tags:
+      - panel
+      summary: List panel project overview rows
+      operationId: listPanelProjects
+      responses:
+        '200':
+          description: Project overview response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectOverviewResponse'
+  /api/v1/panel/projects/{project_key}:
+    get:
+      tags:
+      - panel
+      summary: Get panel project detail
+      operationId: getPanelProjectDetail
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Project detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectDetailResponse'
+  /api/v1/panel/projects/{project_key}/latest:
+    get:
+      tags:
+      - panel
+      summary: Get latest panel run detail
+      operationId: getPanelProjectLatestRun
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Latest run detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelLatestRunResponse'
 components:
   schemas:
     Capability:
@@ -112,3 +220,436 @@ components:
       - service
       - active_focus
       title: HealthResponse
+    PanelCheckerName:
+      type: string
+      enum:
+      - build
+      - lint
+      - typecheck
+      - test
+      - coverage
+      title: PanelCheckerName
+    PanelCheckerStatus:
+      type: string
+      enum:
+      - pass
+      - fail
+      - timeout
+      - skip
+      title: PanelCheckerStatus
+    PanelRunStatus:
+      type: string
+      enum:
+      - pass
+      - fail
+      - timeout
+      - blocked
+      - not-run
+      title: PanelRunStatus
+    PanelOnboardingStatus:
+      type: string
+      enum:
+      - ready
+      - pending
+      - blocked
+      - custom-needed
+      title: PanelOnboardingStatus
+    PanelHealthStatus:
+      type: string
+      enum:
+      - healthy
+      - warning
+      - failing
+      - unknown
+      title: PanelHealthStatus
+    PanelProjectCommands:
+      type: object
+      additionalProperties:
+        type: string
+      title: PanelProjectCommands
+    PanelProjectThresholds:
+      type: object
+      properties:
+        coverage_tolerance_pct:
+          type: number
+        coverage_floor_pct:
+          type: number
+        lint_max_errors:
+          type: integer
+        typecheck_max_errors:
+          type: integer
+      title: PanelProjectThresholds
+    PanelProjectTimeouts:
+      type: object
+      additionalProperties:
+        type: integer
+      title: PanelProjectTimeouts
+    PanelProjectNotify:
+      type: object
+      additionalProperties:
+        type: string
+      title: PanelProjectNotify
+    PanelProjectModule:
+      type: object
+      properties:
+        module_name:
+          type: string
+        stack:
+          type: string
+        language:
+          type: string
+      required:
+      - module_name
+      title: PanelProjectModule
+    PanelProjectRegisterRequest:
+      type: object
+      properties:
+        project_key:
+          type: string
+        project_name:
+          type: string
+        repo_path:
+          type: string
+        preset:
+          type: string
+        onboarding_status:
+          $ref: '#/components/schemas/PanelOnboardingStatus'
+        commands:
+          $ref: '#/components/schemas/PanelProjectCommands'
+        thresholds:
+          $ref: '#/components/schemas/PanelProjectThresholds'
+        timeouts:
+          $ref: '#/components/schemas/PanelProjectTimeouts'
+        notify:
+          $ref: '#/components/schemas/PanelProjectNotify'
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelProjectModule'
+      required:
+      - project_key
+      - project_name
+      - repo_path
+      - preset
+      - onboarding_status
+      - modules
+      title: PanelProjectRegisterRequest
+    PanelProjectRegisterResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        project_id:
+          type: integer
+        module_count:
+          type: integer
+      required:
+      - ok
+      - project_id
+      - module_count
+      title: PanelProjectRegisterResponse
+    PanelBaselineModule:
+      type: object
+      properties:
+        module_name:
+          type: string
+        baseline_pct:
+          type: number
+      required:
+      - module_name
+      - baseline_pct
+      title: PanelBaselineModule
+    PanelBaselineUploadRequest:
+      type: object
+      properties:
+        project_key:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelBaselineModule'
+      required:
+      - project_key
+      - updated_at
+      - modules
+      title: PanelBaselineUploadRequest
+    PanelBaselineUploadResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        project_id:
+          type: integer
+        baselines_upserted:
+          type: integer
+      required:
+      - ok
+      - project_id
+      - baselines_upserted
+      title: PanelBaselineUploadResponse
+    PanelCheckerResult:
+      type: object
+      properties:
+        checker:
+          $ref: '#/components/schemas/PanelCheckerName'
+        status:
+          $ref: '#/components/schemas/PanelCheckerStatus'
+        detail:
+          type: string
+        duration_sec:
+          type: number
+      required:
+      - checker
+      - status
+      title: PanelCheckerResult
+    PanelRunModule:
+      type: object
+      properties:
+        module_name:
+          type: string
+        stack:
+          type: string
+        language:
+          type: string
+        status:
+          $ref: '#/components/schemas/PanelRunStatus'
+        coverage_pct:
+          type: number
+        baseline_pct:
+          type: number
+        coverage_gate_pct:
+          type: number
+        coverage_delta_pct:
+          type: number
+        coverage_parser:
+          type: string
+        block_reason:
+          type: string
+          nullable: true
+        checker_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelCheckerResult'
+      required:
+      - module_name
+      - status
+      - checker_results
+      title: PanelRunModule
+    PanelRunUploadRequest:
+      type: object
+      properties:
+        project_key:
+          type: string
+        run_key:
+          type: string
+        source:
+          type: string
+        git_ref:
+          type: string
+        git_sha:
+          type: string
+        triggered_by:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        duration_sec:
+          type: number
+        strict_mode:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PanelRunStatus'
+        block_reason:
+          type: string
+          nullable: true
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+      required:
+      - project_key
+      - run_key
+      - strict_mode
+      - status
+      - modules
+      title: PanelRunUploadRequest
+    PanelRunUploadResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        project_id:
+          type: integer
+        run_id:
+          type: integer
+        modules_upserted:
+          type: integer
+        checker_results_upserted:
+          type: integer
+      required:
+      - ok
+      - project_id
+      - run_id
+      - modules_upserted
+      - checker_results_upserted
+      title: PanelRunUploadResponse
+    PanelLatestRunRef:
+      type: object
+      properties:
+        run_key:
+          type: string
+        status:
+          $ref: '#/components/schemas/PanelRunStatus'
+        block_reason:
+          type: string
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+      required:
+      - run_key
+      - status
+      - finished_at
+      title: PanelLatestRunRef
+    PanelOverviewProject:
+      type: object
+      properties:
+        project_key:
+          type: string
+        project_name:
+          type: string
+        preset:
+          type: string
+        module_count:
+          type: integer
+        onboarding_status:
+          $ref: '#/components/schemas/PanelOnboardingStatus'
+        health:
+          $ref: '#/components/schemas/PanelHealthStatus'
+        check_all:
+          $ref: '#/components/schemas/PanelRunStatus'
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        block_reason:
+          type: string
+          nullable: true
+      required:
+      - project_key
+      - project_name
+      - preset
+      - module_count
+      - onboarding_status
+      - health
+      - check_all
+      title: PanelOverviewProject
+    PanelProjectOverviewResponse:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelOverviewProject'
+      required:
+      - generated_at
+      - projects
+      title: PanelProjectOverviewResponse
+    PanelProjectDetail:
+      type: object
+      properties:
+        project_key:
+          type: string
+        project_name:
+          type: string
+        preset:
+          type: string
+        onboarding_status:
+          $ref: '#/components/schemas/PanelOnboardingStatus'
+        latest_run:
+          $ref: '#/components/schemas/PanelLatestRunRef'
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+      required:
+      - project_key
+      - project_name
+      - preset
+      - onboarding_status
+      - modules
+      title: PanelProjectDetail
+    PanelProjectDetailResponse:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        project:
+          $ref: '#/components/schemas/PanelProjectDetail'
+      required:
+      - generated_at
+      - project
+      title: PanelProjectDetailResponse
+    PanelLatestRun:
+      type: object
+      properties:
+        run_key:
+          type: string
+        source:
+          type: string
+        git_ref:
+          type: string
+        git_sha:
+          type: string
+        triggered_by:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        duration_sec:
+          type: number
+          nullable: true
+        strict_mode:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PanelRunStatus'
+        block_reason:
+          type: string
+          nullable: true
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+      required:
+      - run_key
+      - strict_mode
+      - status
+      - modules
+      title: PanelLatestRun
+    PanelLatestRunResponse:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        run:
+          $ref: '#/components/schemas/PanelLatestRun'
+      required:
+      - generated_at
+      - run
+      title: PanelLatestRunResponse

@@ -11,7 +11,7 @@ The Week 1 Panel uses a "CLI writes to API, API writes to DB, Web reads from API
 This document focuses on 6 questions:
 
 1. what `Project`, `Module`, `Run`, `Checker Result`, and `Baseline` mean
-2. what the 5 tables `panel_projects`, `panel_runs`, `panel_modules`, `panel_checker_results`, and `panel_baselines` store
+2. what the 6 tables `panel_projects`, `panel_runs`, `panel_modules`, `panel_run_modules`, `panel_checker_results`, and `panel_baselines` store
 3. which API the CLI calls and at what time
 4. which API is used for project initialization data, baseline data, and each check result
 5. how request payloads map into DB fields
@@ -29,7 +29,7 @@ CLI calls apps/api write endpoints
   + POST /api/v1/panel/baselines
   + POST /api/v1/panel/runs
   ↓
-apps/api validates payloads and writes SQLite
+apps/api validates payloads and writes PostgreSQL
   ↓
 apps/web calls apps/api read endpoints
   ↓
@@ -78,11 +78,9 @@ Module-level data:
 
 - module name
 - stack
-- current status
-- current coverage
-- current baseline
-- current gate
-- current module-level blocking reason
+- stable module metadata
+- latest run snapshot data
+- current effective baseline
 
 ### 3.3 Run
 
@@ -125,17 +123,19 @@ Project 1 --- N Run
 Project 1 --- N Module
 Project 1 --- N Baseline
 
-Run 1 --- N CheckerResult
-Module 1 --- N CheckerResult
+Run 1 --- N RunModule
+Module 1 --- N RunModule
+RunModule 1 --- N CheckerResult
 Module 1 --- 1 Baseline
 ```
 
-### 4.2 One-line explanation of the 5 tables
+### 4.2 One-line explanation of the 6 tables
 
 - `panel_projects`: project master table, stores project static info and onboarding state
 - `panel_runs`: project run history table, stores project-level results for each check
-- `panel_modules`: module current snapshot table, stores current module state
-- `panel_checker_results`: run detail table, stores build/lint/typecheck/test/coverage results for one module in one run
+- `panel_modules`: module master table, stores stable module identity and metadata
+- `panel_run_modules`: run-module snapshot table, stores module status, coverage, and gate values for one run
+- `panel_checker_results`: run detail table, stores build/lint/typecheck/test/coverage results for one run module in one run
 - `panel_baselines`: module baseline table, stores the current effective baseline
 
 ## 5. Table Design
@@ -212,25 +212,19 @@ This table answers:
 
 Purpose:
 
-- one row represents the current snapshot of one Module under one Project
+- one row represents one stable Module under one Project
 
 Fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id` | integer PK | primary key |
-| `project_id` | integer FK | references `panel_projects.id` |
+| `id` | bigint PK | primary key |
+| `project_id` | bigint FK | references `panel_projects.id` |
 | `module_name` | text | module name, e.g. `apps/api` |
 | `stack` | text nullable | stack text such as `Python / FastAPI` |
 | `language` | text nullable | primary language or tag |
-| `status` | text | current module state |
-| `coverage_pct` | real nullable | current coverage |
-| `baseline_pct` | real nullable | current baseline |
-| `coverage_gate_pct` | real nullable | current gate |
-| `coverage_delta_pct` | real nullable | current delta vs baseline |
-| `coverage_parser` | text nullable | coverage parser |
-| `block_reason` | text nullable | current module-level blocking reason |
-| `updated_at` | datetime | last sync time |
+| `created_at` | timestamptz | creation time |
+| `updated_at` | timestamptz | last sync time |
 
 Unique key:
 
@@ -238,31 +232,65 @@ Unique key:
 
 This table answers:
 
-- whether the module is currently pass/fail
-- what its current coverage/baseline/gate values are
+- which modules exist in the project
+- what the stable stack identity of the module is
 
-## 5.4 `panel_checker_results`
+## 5.4 `panel_run_modules`
 
 Purpose:
 
-- one row represents one checker result for one Module in one Run
+- one row represents one module snapshot in one Run
 
 Fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id` | integer PK | primary key |
-| `run_id` | integer FK | references `panel_runs.id` |
-| `module_id` | integer FK | references `panel_modules.id` |
-| `checker` | text | `build / lint / typecheck / test / coverage` |
-| `status` | text | `pass / fail / timeout / skip` |
-| `detail` | text nullable | checker output summary |
-| `duration_sec` | real nullable | checker duration |
-| `created_at` | datetime | write time |
+| `id` | bigint PK | primary key |
+| `run_id` | bigint FK | references `panel_runs.id` |
+| `module_id` | bigint FK | references `panel_modules.id` |
+| `stack` | text nullable | runtime-reported stack text |
+| `language` | text nullable | runtime-reported primary language |
+| `status` | text | module result for this run |
+| `coverage_pct` | double precision nullable | coverage for this run |
+| `baseline_pct` | double precision nullable | baseline echoed in this run |
+| `coverage_gate_pct` | double precision nullable | gate threshold for this run |
+| `coverage_delta_pct` | double precision nullable | delta vs baseline for this run |
+| `coverage_parser` | text nullable | coverage parser |
+| `block_reason` | text nullable | module-level blocking reason |
+| `created_at` | timestamptz | write time |
+| `updated_at` | timestamptz | last update time |
 
 Unique key:
 
-- `(run_id, module_id, checker)`
+- `(run_id, module_id)`
+
+This table answers:
+
+- whether a module passed or failed in one specific run
+- what its coverage/baseline/gate values were in that run
+
+## 5.5 `panel_checker_results`
+
+Purpose:
+
+- one row represents one checker result for one run module in one Run
+
+Fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | bigint PK | primary key |
+| `run_id` | bigint FK | references `panel_runs.id` |
+| `run_module_id` | bigint FK | references `panel_run_modules.id` |
+| `checker` | text | `build / lint / typecheck / test / coverage` |
+| `status` | text | `pass / fail / timeout / skip` |
+| `detail` | text nullable | checker output summary |
+| `duration_sec` | double precision nullable | checker duration |
+| `created_at` | timestamptz | write time |
+
+Unique key:
+
+- `(run_module_id, checker)`
 
 This table answers:
 
@@ -270,7 +298,7 @@ This table answers:
 - what the test output summary was
 - whether build and typecheck passed
 
-## 5.5 `panel_baselines`
+## 5.6 `panel_baselines`
 
 Purpose:
 
@@ -280,11 +308,11 @@ Fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id` | integer PK | primary key |
-| `project_id` | integer FK | references `panel_projects.id` |
-| `module_id` | integer FK | references `panel_modules.id` |
-| `baseline_pct` | real nullable | current baseline line coverage |
-| `updated_at` | datetime | baseline last update time |
+| `id` | bigint PK | primary key |
+| `project_id` | bigint FK | references `panel_projects.id` |
+| `module_id` | bigint FK | references `panel_modules.id` |
+| `baseline_pct` | double precision nullable | current baseline line coverage |
+| `updated_at` | timestamptz | baseline last update time |
 
 Unique key:
 
@@ -410,7 +438,7 @@ Write rules:
 - resolve `panel_projects` by `project_key`
 - resolve or create `panel_modules` by `module_name`
 - upsert `panel_baselines`
-- refresh `panel_modules.baseline_pct`
+- do not require writing back into `panel_modules`; read paths should use `panel_baselines` as the source of truth
 
 ## 6.3 Check result upload API
 
@@ -492,9 +520,10 @@ Suggested request body:
 Write rules:
 
 - upsert `panel_runs`
-- upsert current `panel_modules` snapshot
+- resolve or create `panel_modules`
+- upsert `panel_run_modules`
 - upsert `panel_checker_results`
-- if `baseline_pct` is included, refresh `panel_modules.baseline_pct`
+- if `baseline_pct` is included, keep it as a redundant echo field in `panel_run_modules.baseline_pct`
 
 ## 7. CLI Call Timing
 
@@ -552,7 +581,7 @@ Read logic:
 
 1. read `panel_projects`
 2. get the latest `panel_runs` row for each project
-3. join `panel_modules`
+3. aggregate `panel_modules`
 4. derive `module_count`
 5. derive `health`
 
@@ -588,8 +617,9 @@ Read logic:
 1. query `panel_projects`
 2. query all `panel_modules` under the project
 3. query the latest `panel_runs` row for the project
-4. query all `panel_checker_results` under that run
-5. query `panel_baselines`
+4. query all `panel_run_modules` under that run
+5. query all `panel_checker_results` under that run
+6. query `panel_baselines`
 
 ## 8.3 `GET /api/v1/panel/projects/{project_key}/latest`
 
@@ -600,8 +630,9 @@ Purpose:
 Read logic:
 
 1. query the latest `panel_runs` row for the project
-2. query all `panel_checker_results` under that run
-3. query `panel_modules`
+2. query all `panel_run_modules` under that run
+3. query all `panel_checker_results` under that run
+4. query `panel_baselines`
 
 ## 9. Field Mapping
 
@@ -625,7 +656,6 @@ Read logic:
 | `project_key` | `panel_projects` | lookup |
 | `module_name` | `panel_modules` | lookup |
 | `baseline_pct` | `panel_baselines` | `baseline_pct` |
-| `baseline_pct` | `panel_modules` | `baseline_pct` |
 | `updated_at` | `panel_baselines` | `updated_at` |
 
 ## 9.3 Run mapping
@@ -649,15 +679,15 @@ Read logic:
 | CLI field | Target table | Target field |
 |---|---|---|
 | `module_name` | `panel_modules` | `module_name` |
-| `stack` | `panel_modules` | `stack` |
-| `language` | `panel_modules` | `language` |
-| module status | `panel_modules` | `status` |
-| `coverage_pct` | `panel_modules` | `coverage_pct` |
-| `baseline_pct` | `panel_modules` | `baseline_pct` |
-| `coverage_gate_pct` | `panel_modules` | `coverage_gate_pct` |
-| `coverage_delta_pct` | `panel_modules` | `coverage_delta_pct` |
-| `coverage_parser` | `panel_modules` | `coverage_parser` |
-| module block reason | `panel_modules` | `block_reason` |
+| `stack` | `panel_run_modules` | `stack` |
+| `language` | `panel_run_modules` | `language` |
+| module status | `panel_run_modules` | `status` |
+| `coverage_pct` | `panel_run_modules` | `coverage_pct` |
+| `baseline_pct` | `panel_run_modules` | `baseline_pct` |
+| `coverage_gate_pct` | `panel_run_modules` | `coverage_gate_pct` |
+| `coverage_delta_pct` | `panel_run_modules` | `coverage_delta_pct` |
+| `coverage_parser` | `panel_run_modules` | `coverage_parser` |
+| module block reason | `panel_run_modules` | `block_reason` |
 
 ## 9.5 Checker result mapping
 
@@ -705,12 +735,12 @@ Coverage status part:
 
 Coverage numeric part:
 
-- `panel_modules.coverage_pct`
-- `panel_modules.baseline_pct`
-- `panel_modules.coverage_gate_pct`
-- `panel_modules.coverage_delta_pct`
-- `panel_modules.coverage_parser`
-- `panel_modules.block_reason`
+- `panel_run_modules.coverage_pct`
+- `panel_run_modules.baseline_pct`
+- `panel_run_modules.coverage_gate_pct`
+- `panel_run_modules.coverage_delta_pct`
+- `panel_run_modules.coverage_parser`
+- `panel_run_modules.block_reason`
 - `panel_baselines.baseline_pct`
 
 ## 10. Status Calculation Rules
@@ -754,7 +784,7 @@ sequenceDiagram
     participant CLI as AgentShield CLI
     participant Files as .agentshield/config.yaml
     participant API as apps/api
-    participant DB as SQLite
+    participant DB as PostgreSQL
 
     CLI->>CLI: scan repo and infer modules/commands
     CLI->>Files: write config.yaml
@@ -773,14 +803,13 @@ sequenceDiagram
     participant CLI as AgentShield CLI
     participant Files as .agentshield/baselines/*.json
     participant API as apps/api
-    participant DB as SQLite
+    participant DB as PostgreSQL
 
     CLI->>CLI: compute or update baseline
     CLI->>Files: write baseline files
     CLI->>API: POST /api/v1/panel/baselines
     API->>API: validate payload
     API->>DB: upsert panel_baselines
-    API->>DB: update panel_modules.baseline_pct
     DB-->>API: success
     API-->>CLI: 200 OK
 ```
@@ -792,7 +821,7 @@ sequenceDiagram
     participant CLI as AgentShield CLI
     participant Files as .agentshield/runs/*.json
     participant API as apps/api
-    participant DB as SQLite
+    participant DB as PostgreSQL
     participant WEB as apps/web
 
     CLI->>CLI: run build/lint/typecheck/test/coverage
@@ -801,7 +830,8 @@ sequenceDiagram
     CLI->>API: POST /api/v1/panel/runs
     API->>API: validate payload
     API->>DB: upsert panel_runs
-    API->>DB: upsert panel_modules snapshot
+    API->>DB: resolve/create panel_modules
+    API->>DB: upsert panel_run_modules
     API->>DB: upsert panel_checker_results
     DB-->>API: success
     API-->>CLI: 200 OK
@@ -830,9 +860,10 @@ The correct Week 1 Panel design is:
   - after each check completes: `POST /api/v1/panel/runs`
 - API is the only DB write entry
 - Web reads only through query endpoints
-- the 5 tables have clear responsibilities:
+- the 6 tables have clear responsibilities:
   - `panel_projects`: project static info and onboarding status
   - `panel_runs`: project run history
-  - `panel_modules`: current module snapshot
+  - `panel_modules`: module master data
+  - `panel_run_modules`: per-run module snapshot
   - `panel_checker_results`: fine-grained checker results per run
   - `panel_baselines`: current module baseline

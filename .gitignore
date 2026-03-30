@@ -18,3 +18,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Keep Chinese docs local-only.
+docs/**/*.zh-CN.md
