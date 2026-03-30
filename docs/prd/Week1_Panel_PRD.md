@@ -1,82 +1,81 @@
-# Week 1 最小后台 Panel 需求定义
+# Week 1 Minimal Admin Panel — Requirements
 
-> 版本：v6.0
-> 日期：2026-03-29
-> 阶段：Month 1 / Week 1
+> Version: v6.0
+> Date: 2026-03-29
+> Phase: Month 1 / Week 1
 
-## 1. 目标
+## 1. Goal
 
-Week 1 交付一个最小后台 Panel，供负责人查看项目接入状态、最近一次检测结果和阻塞原因。
+Deliver a minimal admin Panel in Week 1, allowing leads to view project onboarding status, the most recent check result, and any blocking reasons.
 
-## 2. 范围
+## 2. Scope
 
-### 必做
+### Must deliver
 
-- `apps/web` 提供可访问的 Panel 页面
-- `apps/api` 提供最小结果上传与查询接口
-- 支持本地 CLI 和 CI 上传检测结果
-- 页面展示项目总览、健康度、最近一次 `check-all` 结果、最近运行时间、阻塞原因
+- `apps/web` provides an accessible Panel page
+- `apps/api` provides minimal result upload and query endpoints
+- Local CLI and CI can upload check results
+- Page displays: project overview, health status, most recent `check` result, last run time, blocking reason
 
-### 不做
+### Out of scope
 
-- smoke 展示
-- 数据库
-- 登录与权限系统
-- 手动触发执行
-- 项目配置编辑
-- 历史趋势
-- 复杂筛选和搜索
+- Smoke test display
+- Database
+- Login and permission system
+- Manual trigger execution
+- Project configuration editing
+- Historical trends
+- Complex filtering and search
 
-## 3. 数据流
+## 3. Data Flow
 
 ```text
 CLI / CI
   ↓
 POST /api/v1/panel/runs
   ↓
-apps/api 落盘并聚合
+apps/api persists and aggregates
   ↓
 GET /api/v1/panel/projects
   ↓
-apps/web Panel 展示
+apps/web Panel display
 ```
 
-## 4. 页面需求
+## 4. Page Requirements
 
-### 页面 1：项目状态总览页
+### Page 1: Project Status Overview
 
-字段如下：
+Fields:
 
-| 字段 | 说明 |
+| Field | Description |
 |---|---|
-| 项目名称 | 项目标识 |
-| preset | 项目类型，如 `infer-monorepo`、`java-maven`、`custom` |
-| 接入状态 | `ready / pending / blocked / custom-needed` |
-| 健康度 | `healthy / warning / failing / unknown` |
-| check-all | `pass / fail / timeout / blocked / not-run` |
-| 最近运行时间 | 最近一次结果更新时间 |
-| 阻塞原因 | 无阻塞显示 `—` |
+| Project name | Project identifier |
+| preset | Project type, e.g. `infer-monorepo`, `java-maven`, `custom` |
+| Onboarding status | `ready / pending / blocked / custom-needed` |
+| Health | `healthy / warning / failing / unknown` |
+| check result | `pass / fail / timeout / blocked / not-run` |
+| Last run time | Timestamp of the most recent result update |
+| Block reason | Show `—` if no block |
 
-页面要求：
+Page requirements:
 
-- 默认加载一次数据
-- 提供手动刷新按钮
-- 表格展示
-- 状态与健康度有颜色区分
+- Load data once on mount
+- Provide a manual refresh button
+- Table layout
+- Status and health columns use color coding
 
-## 5. API 需求
+## 5. API Requirements
 
-### 5.1 上传接口
+### 5.1 Upload endpoint
 
 `POST /api/v1/panel/runs`
 
-用途：
+Purpose:
 
-- 本地 CLI 或 CI 上传一次检测结果
+- Local CLI or CI uploads one check result
 
-最小字段：
+Minimum fields:
 
-- `org`
 - `project`
 - `source`
 - `git_ref`
@@ -90,43 +89,42 @@ apps/web Panel 展示
 - `baseline_pct`
 - `block_reason`
 
-要求：
+Requirements:
 
-- 上传失败不阻断 CLI 主流程
-- 上传失败必须输出 warning 或日志
+- Upload failure must not block the CLI main flow
+- Upload failure must output a warning or log entry
 
-### 5.2 查询接口
+### 5.2 Query endpoints
 
 `GET /api/v1/panel/projects`
 
-用途：
+Purpose:
 
-- 返回 Panel 项目总览列表
+- Returns the Panel project overview list
 
 `GET /api/v1/panel/projects/{project}/latest`
 
-用途：
+Purpose:
 
-- 返回单项目最近一次结果
+- Returns the most recent result for a single project
 
-## 6. 聚合数据
+## 6. Aggregated Data
 
-Panel 展示使用统一聚合结果。
+The Panel uses a unified aggregated result for display.
 
-建议路径：
+Suggested path:
 
 - `.qa-agent/status/projects_status.json`
 
-也可以由 `apps/api` 直接返回同结构数据。
+Alternatively, `apps/api` can return the same structure directly.
 
-Schema：
+Schema:
 
 ```json
 {
   "generated_at": "2026-03-29T02:00:00Z",
   "projects": [
     {
-      "org": "tomo-inc",
       "name": "wallet-service",
       "preset": "java-maven",
       "status": "ready",
@@ -139,24 +137,24 @@ Schema：
 }
 ```
 
-## 7. 状态定义
+## 7. Status Definitions
 
-### 接入状态
+### Onboarding status
 
-- `ready`：已接入，可执行
-- `pending`：已登记，未完成接入
-- `blocked`：存在外部阻塞
-- `custom-needed`：需要定制适配
+- `ready`: onboarded, executable
+- `pending`: registered, onboarding not complete
+- `blocked`: external blocker exists
+- `custom-needed`: requires custom adaptation
 
-### check-all
+### Check result
 
-- `pass`：通过
-- `fail`：失败
-- `timeout`：超时
-- `blocked`：阻塞
-- `not-run`：未运行
+- `pass`: passed
+- `fail`: failed
+- `timeout`: timed out
+- `blocked`: blocked
+- `not-run`: has not been run
 
-### 健康度规则
+### Health derivation rules
 
 | check_all | health |
 |---|---|
@@ -166,24 +164,24 @@ Schema：
 | `blocked` | `warning` |
 | `not-run` | `unknown` |
 
-## 8. 技术约束
+## 8. Technical Constraints
 
-- 使用 `apps/web` 承载 Panel
-- 使用 `apps/api` 承载上传与查询接口
-- 不引入数据库
-- 结果以文件落盘和聚合为主
-- Week 1 只做只读看板
+- Use `apps/web` to host the Panel
+- Use `apps/api` to host upload and query endpoints
+- No database
+- Results are primarily persisted and aggregated via files
+- Week 1 delivers a read-only dashboard only
 
-## 9. 验收标准
+## 9. Acceptance Criteria
 
-- 浏览器可访问 Panel 页面
-- 本地 CLI 结果可上传
-- CI 结果可上传
-- 页面可展示全部已登记项目
-- 页面字段与聚合结果一致
-- 健康度推导规则正确
-- 负责人无需进入 CLI 即可查看总体状态
+- Panel page is accessible in the browser
+- Local CLI results can be uploaded
+- CI results can be uploaded
+- Page displays all registered projects
+- Page fields are consistent with aggregated results
+- Health derivation rules are correct
+- Leads can view overall status without entering the CLI
 
-## 10. 一句话定义
+## 10. One-line Definition
 
-> Week 1 交付一个最小只读后台 Panel，并补齐 CLI / CI 结果上传接口。
+> Week 1 delivers a minimal read-only admin Panel and adds CLI / CI result upload endpoints.

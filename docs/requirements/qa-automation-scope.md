@@ -2,8 +2,8 @@
 
 ## Reference Sources
 
-- `docs/Ai Agent 友好型 开发指南.docx`
-- `docs/AagentShield QA自动化功能 可行性调研.docx`
+- `docs/prd/AgentShield-PRD.md`
+- `docs/architecture/AgentShield-Complete-Technical-Solution-Week1.md`
 
 ## Goal
 
