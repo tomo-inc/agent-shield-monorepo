@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -17,7 +16,7 @@ def utc_now() -> datetime:
 
 def build_upsert(
     session: Session,
-    table: Table,
+    table: Any,
     values: dict[str, Any],
     index_elements: Sequence[str],
     update_columns: Sequence[str],

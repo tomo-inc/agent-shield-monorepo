@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import cast
 
 from app.db.models import PanelBaseline, PanelCheckerResult, PanelModule, PanelRun, PanelRunModule
 from app.schemas.panel import (
+    PanelCheckerName,
     PanelCheckerResult as PanelCheckerResultDto,
+    PanelCheckerStatus,
     PanelHealthStatus,
     PanelLatestRun,
     PanelLatestRunRef,
@@ -26,6 +29,18 @@ def derive_health(status: PanelRunStatus) -> PanelHealthStatus:
     return mapping[status]
 
 
+def as_checker_name(value: str) -> PanelCheckerName:
+    return cast(PanelCheckerName, value)
+
+
+def as_checker_status(value: str) -> PanelCheckerStatus:
+    return cast(PanelCheckerStatus, value)
+
+
+def as_run_status(value: str) -> PanelRunStatus:
+    return cast(PanelRunStatus, value)
+
+
 def assemble_run_modules(
     modules: list[PanelModule],
     run_modules: list[PanelRunModule],
@@ -38,8 +53,8 @@ def assemble_run_modules(
     for checker_result in checker_results:
         checker_map[checker_result.run_module_id].append(
             PanelCheckerResultDto(
-                checker=checker_result.checker,
-                status=checker_result.status,
+                checker=as_checker_name(checker_result.checker),
+                status=as_checker_status(checker_result.status),
                 detail=checker_result.detail,
                 duration_sec=checker_result.duration_sec,
             )
@@ -53,7 +68,7 @@ def assemble_run_modules(
                 module_name=module.module_name,
                 stack=run_module.stack or module.stack,
                 language=run_module.language or module.language,
-                status=run_module.status,
+                status=as_run_status(run_module.status),
                 coverage_pct=run_module.coverage_pct,
                 baseline_pct=baseline_by_module_id.get(run_module.module_id, run_module.baseline_pct),
                 coverage_gate_pct=run_module.coverage_gate_pct,
@@ -69,7 +84,7 @@ def assemble_run_modules(
 def build_latest_run_ref(run: PanelRun) -> PanelLatestRunRef:
     return PanelLatestRunRef(
         run_key=run.run_key,
-        status=run.status,
+        status=as_run_status(run.status),
         block_reason=run.block_reason,
         finished_at=run.finished_at or run.created_at,
     )
@@ -86,14 +101,14 @@ def build_latest_run_payload(run: PanelRun, modules: list[PanelRunModuleDto]) ->
         finished_at=run.finished_at,
         duration_sec=run.duration_sec,
         strict_mode=run.strict_mode,
-        status=run.status,
+        status=as_run_status(run.status),
         block_reason=run.block_reason,
         modules=modules,
     )
 
 
 def build_overview_project(project, module_count: int, latest_run: PanelRun | None) -> PanelOverviewProject:
-    status: PanelRunStatus = latest_run.status if latest_run is not None else "not-run"
+    status: PanelRunStatus = as_run_status(latest_run.status) if latest_run is not None else "not-run"
     return PanelOverviewProject(
         project_key=project.project_key,
         project_name=project.project_name,

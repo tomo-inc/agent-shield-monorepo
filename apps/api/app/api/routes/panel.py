@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import NoReturn
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -26,7 +28,7 @@ from app.services.panel.run_upload import upload_run
 router = APIRouter(prefix="/api/v1/panel", tags=["panel"])
 
 
-def _raise_http_error(error: PanelServiceError) -> None:
+def _raise_http_error(error: PanelServiceError) -> NoReturn:
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     if isinstance(error, (ProjectNotFoundError, RunNotFoundError)):
         status_code = status.HTTP_404_NOT_FOUND
