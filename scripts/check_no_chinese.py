@@ -26,6 +26,8 @@ def check(root: Path) -> list[str]:
     for path in sorted(root.rglob("*")):
         if any(part in EXCLUDE_DIRS for part in path.parts):
             continue
+        if ".zh-CN." in path.name:
+            continue
         if path.suffix not in INCLUDE_SUFFIXES:
             continue
         try:
