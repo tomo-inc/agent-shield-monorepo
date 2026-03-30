@@ -46,3 +46,31 @@ def test_run_checks_marks_success(tmp_path: Path) -> None:
     )
 
     assert report.status == "pass"
+
+
+def test_run_checks_skips_notifications_when_disabled(tmp_path: Path, monkeypatch) -> None:
+    calls: list[str] = []
+
+    def fake_send_webhook(*args, **kwargs) -> bool:
+        calls.append("called")
+        return True
+
+    monkeypatch.setattr("agentshield_cli.runner.send_webhook", fake_send_webhook)
+    config = AgentShieldConfig(
+        project=ProjectConfig(name="demo", root=str(tmp_path)),
+        checks=[CheckConfig(id="ok", label="OK", run="python -c \"print('ok')\"", timeout_sec=5)],
+        notify=NotifyConfig(enabled=True, webhook_url="https://example.com/webhook"),
+    )
+
+    report, webhook_sent = run_checks(
+        config,
+        config_path=Path(".agentshield/config.yaml"),
+        used_config_file=True,
+        strict=False,
+        run_dir=tmp_path / ".qa-agent" / "runs",
+        send_notifications=False,
+    )
+
+    assert report.status == "pass"
+    assert webhook_sent is False
+    assert calls == []

@@ -32,6 +32,22 @@ class RunReport(BaseModel):
         return [check for check in self.checks if check.status != "pass"]
 
 
+class BaselineCheck(BaseModel):
+    id: str
+    label: str
+    command: str
+    status: str
+    exit_code: int
+
+
+class BaselineRecord(BaseModel):
+    module: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    source_created_at: str
+    source_run_file: str
+    checks: list[BaselineCheck] = Field(default_factory=list)
+
+
 class FileSample(BaseModel):
     path: str
     content: str

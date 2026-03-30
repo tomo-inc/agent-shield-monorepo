@@ -7,7 +7,7 @@ packages = ["agentshield_cli"]
 
 [project]
 name = "agentshield-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Mode 1 AgentShield Clean CLI"
 readme = "README.md"
 requires-python = ">=3.11"
