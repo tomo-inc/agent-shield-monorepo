@@ -1,362 +1,366 @@
-**AgentShield CLI Command Design Documentation**
+# AgentShield CLI Command Design Documentation
 
-**Command overview**
+## Command Overview
 
-![](./docx-media/AgentShield-CLI-Command-Design-Documentation/media/image1.png)
+| Command | User | Description |
+|---|---|---|
+| `agentshield check` | Local developer | Auto-init if no config, otherwise run checks directly |
+| `agentshield init --yes` | CI first-time setup | Fully automated, no interaction, generates config and commits to Git |
+| `agentshield check --no-init --strict` | CI daily | Run checks directly, block on failure |
+| `agentshield baseline update` | Local developer | Explicitly raise the baseline |
+| `agentshield report` | Local developer | View check history |
 
-**点击图片可查看完整电子表格**
+---
 
-**First, agentshield check**
+## I. agentshield check
 
-**Parameter**
+### Parameters
 
-![](./docx-media/AgentShield-CLI-Command-Design-Documentation/media/image2.png)
+| Parameter | Required | Description |
+|---|---|---|
+| `--no-init` | Optional | Disable auto-init. CI must include this flag. |
+| `--dry-run` | Optional | Trial run — does not write baseline or send notifications |
+| `--strict` | Optional | Exit code 1 if any check fails |
 
-**点击图片可查看完整电子表格**
+> `--project` and `--org` have been removed. The current working directory is the project root; AgentShield identifies it automatically.
 
-**Usage example**
+### Usage Examples
 
-  -----------------------------------------------------------------------
-  Bash\
-  \# 本地开发者（在项目根目录下执行）\
-  cd ../wallet-service\
-  agentshield check\
-  \
-  \# CI 日常检查\
-  agentshield check \--no-init \--strict\
-  \
-  \# 试运行\
-  agentshield check \--dry-run
+```bash
+# Local developer (run from project root)
+cd ../wallet-service
+agentshield check
 
-  -----------------------------------------------------------------------
+# CI daily check
+agentshield check --no-init --strict
 
-**Execution process**
+# Trial run
+agentshield check --dry-run
+```
 
-  -----------------------------------------------------------------------
-  Plain Text\
-  cd ../wallet-service\
-  agentshield check\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 1 查找配置文件 │\
-  │ │\
-  │ 在当前目录查找 .agentshield/config.yaml │\
-  │ │\
-  │ 有配置文件 ──────────────────────→ 跳到 Step 4 │\
-  │ 无配置文件 ──→ 有 \--no-init flag? │\
-  │ 是 → 报错退出 │\
-  │ 否 → 进入 Step 2 │\
-  └─────────────────────────────────────────────────────┘\
-  │（无配置，自动触发 init）\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 2 AI Analyzer 扫描项目结构 │\
-  │ │\
-  │ \[1/4\] 读取目录树（3 层深度）\... ✓ │\
-  │ \[2/4\] 读取关键配置文件\... ✓ │\
-  │ \[3/4\] 读取 CI 工作流\... ✓ │\
-  │ \[4/4\] AI 分析中\... ✓ 完成 │\
-  │ │\
-  │ 识别到以下子模块： │\
-  │ apps/api Python · FastAPI · pytest │\
-  │ apps/web TypeScript · Next.js · vitest │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 3 人工逐模块确认 │\
-  │ │\
-  │ ── 子模块 1/2：apps/api ── │\
-  │ │\
-  │ 确认点 1：识别结果是否正确？ │\
-  │ Python · FastAPI · pytest · ruff │\
-  │ \[Y/n\] │\
-  │ │\
-  │ 确认点 2：检查命令是否正确？ │\
-  │ build: python -m py_compile │\
-  │ lint: ruff check . │\
-  │ typecheck: pyright │\
-  │ test: pytest │\
-  │ coverage: pytest \--cov │\
-  │ \[1\] 全部确认 \[2\] 修改某条 \[3\] 手动填写 │\
-  │ │\
-  │ ── 子模块 2/2：apps/web ── │\
-  │ │\
-  │ 确认点 1：识别结果是否正确？ │\
-  │ TypeScript · Next.js · vitest · eslint │\
-  │ \[Y/n\] │\
-  │ │\
-  │ 确认点 2：检查命令是否正确？ │\
-  │ build: pnpm build │\
-  │ lint: pnpm lint │\
-  │ typecheck: pnpm typecheck │\
-  │ test: pnpm test │\
-  │ coverage: pnpm test \--coverage │\
-  │ \[1\] 全部确认 \[2\] 修改某条 \[3\] 手动填写 │\
-  │ │\
-  │ ── 全局配置 ── │\
-  │ │\
-  │ 确认点 3：配置通知渠道 │\
-  │ \[1\] 配置飞书 Webhook \[2\] 暂时跳过 │\
-  │ │\
-  │ → 生成 .agentshield/config.yaml │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 4 加载并校验配置 │\
-  │ │\
-  │ 读取 .agentshield/config.yaml │\
-  │ 各子模块深合并 Preset 默认值 │\
-  │ Pydantic Schema 校验 │\
-  │ ✓ 配置合法 │\
-  │ ✗ 字段拼写错误 → 立即报错，不进入检查 │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 5 各子模块并发执行检查 Pipeline │\
-  │ │\
-  │ ┌─── apps/api（Python）─────────────────────────┐ │\
-  │ │ BuildChecker python -m py_compile PASS │ │\
-  │ │ LintChecker ruff check . PASS │ │\
-  │ │ TypeChecker pyright PASS │ │\
-  │ │ TestChecker pytest PASS │ │\
-  │ │ CoverageChecker pytest \--cov PASS │ │\
-  │ │ PytestCovJSONParser 解析覆盖率数据 │ │\
-  │ └────────────────────────────────────────────────┘ │\
-  │ │\
-  │ ┌─── apps/web（TypeScript）─────────────────────┐ │\
-  │ │ BuildChecker pnpm build PASS │ │\
-  │ │ LintChecker pnpm lint PASS │ │\
-  │ │ TypeChecker pnpm typecheck PASS │ │\
-  │ │ TestChecker pnpm test PASS │ │\
-  │ │ CoverageChecker pnpm test \--coverage PASS │ │\
-  │ │ IstanbulJSONParser 解析覆盖率数据 │ │\
-  │ └────────────────────────────────────────────────┘ │\
-  │ │\
-  │ 两个子模块并发执行，互不阻塞 │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 6 baseline 处理 │\
-  │ │\
-  │ 各子模块独立维护自己的 baseline： │\
-  │ .agentshield/baselines/apps-api.json │\
-  │ .agentshield/baselines/apps-web.json │\
-  │ │\
-  │ 首次运行：自动写入 baseline │\
-  │ 非首次：对比当前值，计算门禁阈值 │\
-  │ \--dry-run：不写入，只展示对比 │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ Step 7 汇总报告输出 │\
-  │ │\
-  │ ══════════════════════════════════════════ │\
-  │ AgentShield · agent-shield · 2026-03-28 │\
-  │ ══════════════════════════════════════════ │\
-  │ │\
-  │ ── apps/api（Python）── │\
-  │ Build ✓ PASS (3.2s) │\
-  │ Lint ✓ PASS (2.1s) │\
-  │ TypeCheck ✓ PASS (4.5s) │\
-  │ Test ✓ PASS 86 passed / 0 failed │\
-  │ Coverage ✓ PASS │\
-  │ 行覆盖率 81.2% ████████░░ 门禁 ≥ 76.0% │\
-  │ │\
-  │ ── apps/web（TypeScript）── │\
-  │ Build ✓ PASS (12.3s) │\
-  │ Lint ✓ PASS (3.4s) │\
-  │ TypeCheck ✓ PASS (5.2s) │\
-  │ Test ✓ PASS 43 passed / 0 failed │\
-  │ Coverage ✗ FAIL │\
-  │ 行覆盖率 58.3% ██████░░░░ 门禁 ≥ 67.0% ← 不达标│\
-  │ │\
-  │ 总耗时 31.2s │\
-  │ 整体结论 ✗ FAIL（apps/web Coverage 不达标） │\
-  └─────────────────────────────────────────────────────┘\
-  │\
-  ├── 推送飞书通知：\"agent-shield ✗ FAIL · apps/web 覆盖率不达标\"\
-  │\
-  ├── \--strict → exit code 1（CI 阻断）\
-  └── 非 strict → exit code 0（仅展示，不阻断）
+### Execution Flow
 
-  -----------------------------------------------------------------------
+```
+cd ../wallet-service
+agentshield check
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 1  Locate config file                         │
+│                                                     │
+│  Look for .agentshield/config.yaml in current dir   │
+│                                                     │
+│  Config found  ──────────────────────→  Skip to 4  │
+│  No config  ──→  --no-init flag present?            │
+│                   Yes  →  Error, exit               │
+│                   No   →  Proceed to Step 2         │
+└─────────────────────────────────────────────────────┘
+        │ (no config, auto-trigger init)
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 2  AI Analyzer scans project structure        │
+│                                                     │
+│  [1/4] Reading directory tree (3 levels)...  ✓      │
+│  [2/4] Reading key config files...           ✓      │
+│  [3/4] Reading CI workflows...               ✓      │
+│  [4/4] AI analysis...                        ✓ done │
+│                                                     │
+│  Detected sub-modules:                              │
+│    apps/api   Python · FastAPI · pytest             │
+│    apps/web   TypeScript · Next.js · vitest         │
+└─────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 3  Confirm each sub-module with user          │
+│                                                     │
+│  ── Sub-module 1/2: apps/api ──                     │
+│                                                     │
+│  Confirm 1: Is the detection correct?               │
+│    Python · FastAPI · pytest · ruff                 │
+│    [Y/n]                                            │
+│                                                     │
+│  Confirm 2: Are the check commands correct?         │
+│    build:    python -m py_compile                   │
+│    lint:     ruff check .                           │
+│    typecheck: pyright                               │
+│    test:     pytest                                 │
+│    coverage: pytest --cov                           │
+│    [1] Confirm all  [2] Edit one  [3] Enter manually│
+│                                                     │
+│  ── Sub-module 2/2: apps/web ──                     │
+│                                                     │
+│  Confirm 1: Is the detection correct?               │
+│    TypeScript · Next.js · vitest · eslint           │
+│    [Y/n]                                            │
+│                                                     │
+│  Confirm 2: Are the check commands correct?         │
+│    build:    pnpm build                             │
+│    lint:     pnpm lint                              │
+│    typecheck: pnpm typecheck                        │
+│    test:     pnpm test                              │
+│    coverage: pnpm test --coverage                   │
+│    [1] Confirm all  [2] Edit one  [3] Enter manually│
+│                                                     │
+│  ── Global config ──                                │
+│                                                     │
+│  Confirm 3: Configure notification channel          │
+│    [1] Set up Feishu Webhook  [2] Skip for now      │
+│                                                     │
+│  → Generate .agentshield/config.yaml                │
+└─────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 4  Load and validate config                   │
+│                                                     │
+│  Read .agentshield/config.yaml                      │
+│  Deep-merge Preset defaults for each sub-module     │
+│  Pydantic Schema validation                         │
+│    ✓ Config is valid                                │
+│    ✗ Typo in field name → error, abort checks       │
+└─────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 5  Run check pipeline for all sub-modules     │
+│          concurrently                               │
+│                                                     │
+│  ┌─── apps/api (Python) ─────────────────────────┐ │
+│  │  BuildChecker    python -m py_compile  PASS   │ │
+│  │  LintChecker     ruff check .          PASS   │ │
+│  │  TypeChecker     pyright               PASS   │ │
+│  │  TestChecker     pytest                PASS   │ │
+│  │  CoverageChecker pytest --cov          PASS   │ │
+│  │    PytestCovJSONParser parses coverage data   │ │
+│  └────────────────────────────────────────────────┘ │
+│                                                     │
+│  ┌─── apps/web (TypeScript) ─────────────────────┐ │
+│  │  BuildChecker    pnpm build            PASS   │ │
+│  │  LintChecker     pnpm lint             PASS   │ │
+│  │  TypeChecker     pnpm typecheck        PASS   │ │
+│  │  TestChecker     pnpm test             PASS   │ │
+│  │  CoverageChecker pnpm test --coverage  PASS   │ │
+│  │    IstanbulJSONParser parses coverage data    │ │
+│  └────────────────────────────────────────────────┘ │
+│                                                     │
+│  Both sub-modules run concurrently, non-blocking    │
+└─────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 6  Baseline handling                          │
+│                                                     │
+│  Each sub-module maintains its own baseline:        │
+│    .agentshield/baselines/apps-api.json             │
+│    .agentshield/baselines/apps-web.json             │
+│                                                     │
+│  First run:  auto-write baseline                    │
+│  Subsequent: compare against baseline for gate      │
+│  --dry-run:  show comparison only, do not write     │
+└─────────────────────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Step 7  Aggregate report output                    │
+│                                                     │
+│  ══════════════════════════════════════════         │
+│  AgentShield · agent-shield · 2026-03-28            │
+│  ══════════════════════════════════════════         │
+│                                                     │
+│  ── apps/api (Python) ──                            │
+│  Build      ✓ PASS   (3.2s)                        │
+│  Lint       ✓ PASS   (2.1s)                        │
+│  TypeCheck  ✓ PASS   (4.5s)                        │
+│  Test       ✓ PASS   86 passed / 0 failed           │
+│  Coverage   ✓ PASS                                 │
+│    Line     81.2%  ████████░░  gate >= 76.0%       │
+│                                                     │
+│  ── apps/web (TypeScript) ──                        │
+│  Build      ✓ PASS   (12.3s)                       │
+│  Lint       ✓ PASS   (3.4s)                        │
+│  TypeCheck  ✓ PASS   (5.2s)                        │
+│  Test       ✓ PASS   43 passed / 0 failed           │
+│  Coverage   ✗ FAIL                                 │
+│    Line     58.3%  ██████░░░░  gate >= 67.0% ← FAIL│
+│                                                     │
+│  Total time  31.2s                                  │
+│  Result      ✗ FAIL (apps/web coverage below gate)  │
+└─────────────────────────────────────────────────────┘
+        │
+        ├── Send Feishu notification: "agent-shield FAIL · apps/web below coverage gate"
+        │
+        ├── --strict → exit code 1 (CI blocked)
+        └── no --strict → exit code 0 (display only, no block)
+```
 
-**AgentShield init \--yes (CI dedicated)**
+---
 
-**Parameter**
+## II. agentshield init --yes (CI dedicated)
 
-![](./docx-media/AgentShield-CLI-Command-Design-Documentation/media/image3.png)
+### Parameters
 
-**点击图片可查看完整电子表格**
+| Parameter | Required | Description |
+|---|---|---|
+| `--yes` | Required | Fully automated, skip all confirmations |
 
-Premise: The target project\'s dependency environment is ready (dependencies are installed and the runtime environment is configured).
+Prerequisite: target project dependency environment must be ready (dependencies installed, runtime configured).
 
-**Usage example**
+### Usage Example
 
-  -----------------------------------------------------------------------
-  Bash\
-  \# CI 首次接入（在目标项目根目录执行）\
-  agentshield init \--yes
+```bash
+# CI first-time onboarding (run from project root)
+agentshield init --yes
+```
 
-  -----------------------------------------------------------------------
+### Execution Flow
 
-**Execution process**
+```
+agentshield init --yes
+        │
+        ▼
+  AI scans all sub-modules
+        │
+        ▼
+  Accept all detected results without waiting for confirmation
+        │
+        ▼
+  Generate .agentshield/config.yaml
+        │
+        ▼
+  Collect baseline (auto-run all check commands)
+        │
+        ▼
+  Initialization complete, config written
+  → Commit .agentshield/config.yaml to Git
+```
 
-  -----------------------------------------------------------------------
-  Plain Text\
-  agentshield init \--yes\
-  │\
-  ▼\
-  AI 扫描所有子模块\
-  │\
-  ▼\
-  直接接受所有识别结果，不等人确认\
-  │\
-  ▼\
-  生成 .agentshield/config.yaml\
-  │\
-  ▼\
-  首次采集 baseline（自动执行所有检查命令）\
-  │\
-  ▼\
-  ✓ 初始化完成，配置已写入\
-  → 提交 .agentshield/config.yaml 到 Git
+---
 
-  -----------------------------------------------------------------------
+## III. agentshield baseline update
 
-**III. AgentShield baseline update**
+### Parameters
 
-**Parameter**
+| Parameter | Required | Description |
+|---|---|---|
+| `--module` | Optional | Target a specific sub-module. Default: update all. |
 
-![](./docx-media/AgentShield-CLI-Command-Design-Documentation/media/image4.png)
+### Usage Examples
 
-**点击图片可查看完整电子表格**
+```bash
+# Update baseline for all sub-modules
+agentshield baseline update
 
-**Usage example**
+# Update a specific sub-module only
+agentshield baseline update --module apps/api
+```
 
-  -----------------------------------------------------------------------
-  Bash\
-  \# 更新所有子模块 baseline\
-  agentshield baseline update\
-  \
-  \# 只更新某个子模块\
-  agentshield baseline update \--module apps/api
+### Execution Flow
 
-  -----------------------------------------------------------------------
+```
+agentshield baseline update
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Show per-module comparison                         │
+│                                                     │
+│  ── apps/api ──                                     │
+│  Current baseline (2026-03-01)   line 72.3%         │
+│  Latest check result (2026-03-28) line 81.5% +9.2%  │
+│  New gate threshold               line >= 76.5%     │
+│                                                     │
+│  ── apps/web ──                                     │
+│  Current baseline (2026-03-01)   line 65.0%         │
+│  Latest check result (2026-03-28) line 71.2% +6.2%  │
+│  New gate threshold               line >= 66.2%     │
+│                                                     │
+│  WARNING: raising the baseline means future runs    │
+│  below the new threshold will be marked FAIL        │
+│  Confirm update all? [y/N]                          │
+└─────────────────────────────────────────────────────┘
+        │ confirmed
+        ▼
+  Write baseline files for each sub-module
+  Baseline updated successfully
+```
 
-**Execution process**
+---
 
-  -----------------------------------------------------------------------
-  Plain Text\
-  agentshield baseline update\
-  │\
-  ▼\
-  ┌─────────────────────────────────────────────────────┐\
-  │ 逐模块展示对比 │\
-  │ │\
-  │ ── apps/api ── │\
-  │ 当前 baseline（2026-03-01） 行 72.3% │\
-  │ 最新检查结果（2026-03-28） 行 81.5% ↑ +9.2% │\
-  │ 更新后门禁阈值 行 ≥ 76.5% │\
-  │ │\
-  │ ── apps/web ── │\
-  │ 当前 baseline（2026-03-01） 行 65.0% │\
-  │ 最新检查结果（2026-03-28） 行 71.2% ↑ +6.2% │\
-  │ 更新后门禁阈值 行 ≥ 66.2% │\
-  │ │\
-  │ ⚠ baseline 提升后，低于新阈值将判定 FAIL │\
-  │ 确认更新全部？\[y/N\] │\
-  └─────────────────────────────────────────────────────┘\
-  │ 确认\
-  ▼\
-  写入各子模块 baseline 文件\
-  ✓ baseline 已更新
+## IV. agentshield report
 
-  -----------------------------------------------------------------------
+### Parameters
 
-**Iv. agentshield report**
+| Parameter | Required | Description |
+|---|---|---|
+| `--last` | Optional | Show last N runs. Default: 1 |
+| `--module` | Optional | Show a specific sub-module only |
 
-**Parameter**
+### Usage Examples
 
-![](./docx-media/AgentShield-CLI-Command-Design-Documentation/media/image5.png)
+```bash
+# View the most recent full report
+agentshield report
 
-**点击图片可查看完整电子表格**
+# View the last 5 runs
+agentshield report --last 5
 
-**Usage example**
+# View only apps/api for the last 3 runs
+agentshield report --module apps/api --last 3
+```
 
-  -----------------------------------------------------------------------
-  Bash\
-  \# 查看最近一次完整报告\
-  agentshield report\
-  \
-  \# 查看最近 5 次\
-  agentshield report \--last 5\
-  \
-  \# 只看 apps/api 的记录\
-  agentshield report \--module apps/api \--last 3
+### Execution Flow
 
-  -----------------------------------------------------------------------
+```
+agentshield report --last 3
+        ↓
+Read .agentshield/runs/ directory
+        ↓
+Sort by time descending, take the most recent 3
+        ↓
+Print history trend table to terminal
+```
 
-  -----------------------------------------------------------------------
-  Plain Text\
-  执行流程\
-  agentshield report \--last 3\
-  ↓\
-  读取 .agentshield/runs/ 目录\
-  ↓\
-  按时间倒序排列，取最近 3 条\
-  ↓\
-  终端输出历史趋势表格
+---
 
-  -----------------------------------------------------------------------
+## V. CI Integration Example
 
-**Five CI access examples**
+```yaml
+# .github/workflows/agentshield.yml
 
-  -----------------------------------------------------------------------
-  YAML\
-  \# .github/workflows/agentshield.yml\
-  \
-  name: AgentShield QA Gate\
-  \
-  on: \[push, pull_request\]\
-  \
-  jobs:\
-  \
-  \# 首次接入时手动触发一次，之后不再需要\
-  init:\
-  if: github.event_name == \'workflow_dispatch\'\
-  runs-on: ubuntu-latest\
-  steps:\
-  - uses: actions/checkout@v4\
-  - name: Install AgentShield\
-  run: pip install agentshield\
-  - name: Init（全自动）\
-  run: agentshield init \--yes\
-  env:\
-  AGENTSHIELD_API_KEY: \${{ secrets.AGENTSHIELD_API_KEY }}\
-  - name: Commit config\
-  run: \|\
-  git add .agentshield/\
-  git commit -m \"chore: add agentshield config\"\
-  git push\
-  \
-  \# 每次 push 自动触发\
-  check:\
-  runs-on: ubuntu-latest\
-  steps:\
-  - uses: actions/checkout@v4\
-  - name: Install AgentShield\
-  run: pip install agentshield\
-  - name: QA Check\
-  run: agentshield check \--no-init \--strict\
-  env:\
-  FEISHU_WEBHOOK_URL: \${{ secrets.FEISHU_WEBHOOK_URL }}\
-  AGENTSHIELD_API_KEY: \${{ secrets.AGENTSHIELD_API_KEY }}
+name: AgentShield QA Gate
 
-  -----------------------------------------------------------------------
+on: [push, pull_request]
+
+jobs:
+
+  # Run once manually on first onboarding — not needed after that
+  init:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AgentShield
+        run: pip install agentshield
+      - name: Init (fully automated)
+        run: agentshield init --yes
+        env:
+          AGENTSHIELD_API_KEY: ${{ secrets.AGENTSHIELD_API_KEY }}
+      - name: Commit config
+        run: |
+          git add .agentshield/
+          git commit -m "chore: add agentshield config"
+          git push
+
+  # Runs automatically on every push
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AgentShield
+        run: pip install agentshield
+      - name: QA Check
+        run: agentshield check --no-init --strict
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          AGENTSHIELD_API_KEY: ${{ secrets.AGENTSHIELD_API_KEY }}
+```

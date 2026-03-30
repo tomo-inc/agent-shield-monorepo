@@ -16,29 +16,29 @@
 
   -----------------------------------------------------------------------
   Plain Text\
-  Week 1 ──── 基础门禁版（先跑通，再优雅）\
-  │ D1: CLI骨架 + BuildChecker + TestChecker（先跑通）\
-  │ D2: Lint + TypeCheck + Preset + 覆盖率 + 核心单测\
-  │ D3: 批量运行 + 报告 + Pydantic校验（通知 P1）\
-  │ D4-5: 全量适配 + 验证 + 发布\
-  │ Smoke 环境信息收集（为 Week 2 做准备）\
-  │ \[Day 5 下午\] buffer 半天\
+  Week 1 ──── Basic Gate (run first, polish later)\
+  │ D1: CLI skeleton + BuildChecker + TestChecker (get it running)\
+  │ D2: Lint + TypeCheck + Preset + Coverage + core unit tests\
+  │ D3: Batch run + Report + Pydantic validation (Notification P1)\
+  │ D4-5: Full onboarding + validation + release\
+  │ Smoke environment info collection (prep for Week 2)\
+  │ [Day 5 afternoon] buffer half-day\
   ▼\
-  Week 2 ──── 黑盒 Smoke 试点版 + 通知正式上线\
-  │ Smoke 从零搭建（测试用例自动生成-接口自动化自动生成-运行）\
-  │ 通知正式启用 + CI nightly + HTML 报告\
-  │ go Preset + tomo-qa init + pre-flight + 重试\
-  │ \[Day 10 下午\] buffer 半天\
+  Week 2 ──── Black-box Smoke Pilot + Notifications live\
+  │ Smoke built from scratch (test case auto-gen + API auto-gen + run)\
+  │ Notifications officially enabled + CI nightly + HTML report\
+  │ go Preset + agentshield init + pre-flight + retry\
+  │ [Day 10 afternoon] buffer half-day\
   ▼\
-  Week 3 ──── Smoke 扩面 + 回归守护 + OpenAPI 解析\
-  │ Smoke 推广更多项目 + OpenAPI spec 自动解析\
-  │ baseline 存储 + pass→fail 检测\
-  │ \[Day 15 下午\] buffer 半天\
+  Week 3 ──── Smoke expansion + Regression guard + OpenAPI parsing\
+  │ Smoke rolled out to more projects + OpenAPI spec auto-parsing\
+  │ baseline storage + pass→fail detection\
+  │ [Day 15 afternoon] buffer half-day\
   ▼\
-  Week 4 ──── MVP 收口（铁律：零新功能）\
-  │ Bug 修复 + CI 稳定化 + 文档 + Demo\
-  │ 连续 3 天 green + Demo\
-  │ \[Day 20 下午\] buffer 半天
+  Week 4 ──── MVP closing (iron rule: zero new features)\
+  │ Bug fixes + CI stabilisation + docs + Demo\
+  │ 3 consecutive days green + Demo\
+  │ [Day 20 afternoon] buffer half-day
 
   -----------------------------------------------------------------------
 
@@ -55,7 +55,7 @@
   ------ -------------------------------------------------------------------------------------------------------------------------- ----------------------------------------
   \#     Capacity                                                                                                                   Introduction time
 
-  1      Multi-project unified configuration access (Preset automatic detection + YAML deep merge + Pydantic Schema verification)   Week 1（Preset D2, Pydantic D3）
+  1      Multi-project unified configuration access (Preset automatic detection + YAML deep merge + Pydantic Schema verification)   Week 1(Preset D2, Pydantic D3)
 
   2      Inferno-monorepo + java-maven two core Presets (covering 90% of projects)                                                  Week 1 D2
 
@@ -187,15 +187,15 @@ Which dimension is the weakest (lines/functions/branches)?
 
   -----------------------------------------------------------------------
   Plain Text\
-  覆盖率详情：\
-  行覆盖率: 72.3% ████████░░ （距 100% 差 27.7%）\
-  函数覆盖率: 65.0% ███████░░░ （距 100% 差 35.0%）\
-  分支覆盖率: 58.2% ██████░░░░ （距 100% 差 41.8%）\
+  Coverage details:\
+  Line coverage:     72.3% ████████░░ (27.7% below 100%)\
+  Function coverage: 65.0% ███████░░░ (35.0% below 100%)\
+  Branch coverage:   58.2% ██████░░░░ (41.8% below 100%)\
   \
-  覆盖率最低的文件（TOP 5）:\
-  src/services/transfer.ts --- 行 45.2% \| 函数 40.0%\
-  src/utils/crypto.ts --- 行 52.1% \| 函数 50.0%\
-  src/handlers/webhook.ts --- 行 58.0% \| 函数 55.0%
+  Files with lowest coverage (TOP 5):\
+  src/services/transfer.ts --- line 45.2% | function 40.0%\
+  src/utils/crypto.ts      --- line 52.1% | function 50.0%\
+  src/handlers/webhook.ts  --- line 58.0% | function 55.0%
 
   -----------------------------------------------------------------------
 
@@ -228,13 +228,13 @@ typecheck_max_errors: 0
   -----------------------------------------------------------------------------------
   Plain Text\
   \
-  \*\*后续可以逐步拉升阈值\*\*（比如每两周提高 5-10%），形成持续改进的压力。\
+  **Thresholds can be gradually raised** (e.g. +5-10% every two weeks) to create continuous improvement pressure.\
   \
-  \#### 自动基线模式（v4.0 新增，v5.0 增强）\
+  #### Auto-baseline mode (added v4.0, enhanced v5.0)\
   \
-  手动为 10+ 项目逐个设定阈值成本高且容易拍脑袋。支持 \*\*auto-baseline\*\* 模式：\
+  Manually setting thresholds for 10+ projects is costly and error-prone. Supports **auto-baseline** mode:\
   \
-  \`\`\`yaml\
+  ```yaml\
   thresholds:
 
   -----------------------------------------------------------------------------------
@@ -250,23 +250,23 @@ coverage_target_pct: 100 *#The display layer goal remains unchanged*
   -----------------------------------------------------------------------------------------------------------------
   Plain Text\
   \
-  \*\*工作方式\*\*：\
-  1. 首次 \`tomo-qa check\` 时自动采集当前覆盖率，写入 \`.qa-agent/baselines/\<project\>\_coverage.json\`\
-  2. 门禁阈值 = \*\*max(baseline - tolerance, floor_pct)\*\*（例：当前 72%，tolerance 5%，floor 0%，门禁 = 67%）\
-  3. 只防退步，不强求提升------团队接受度高\
-  4. 后续可切换到 \`mode: manual\` 手动拉升阈值，或缩小 tolerance 逐步收紧\
+  **How it works**:\
+  1. First `agentshield check` auto-collects current coverage, writes to `.qa-agent/baselines/<project>_coverage.json`\
+  2. Gate = **max(baseline - tolerance, floor_pct)** (e.g. current 72%, tolerance 5%, floor 0% → gate = 67%)\
+  3. Only prevents regression, does not force improvement — high team acceptance\
+  4. Can switch to `mode: manual` later to raise threshold manually, or tighten tolerance gradually\
   \
-  \*\*v5.0 增强\*\*：\
-  - \*\*floor_pct 底线保护\*\*：防止覆盖率为 0% 时门禁变为 -5%（永远不 FAIL）\
-  - \*\*baseline 合理性校验\*\*：首次采集时校验覆盖率数据非异常值（非 NaN、非负数）\
-  - \*\*\`\--dry-run\` 模式\*\*：试运行时不写入 baseline，避免探索性运行污染基线数据\
-  - \*\*baseline 写入解耦\*\*：从 CoverageChecker 移至 Orchestrator 后处理阶段，Checker 只读不写\
+  **v5.0 enhancements**:\
+  - **floor_pct protection**: prevents gate from going negative when coverage is 0% (never FAIL on 0)\
+  - **baseline sanity check**: validates coverage data is not NaN or negative on first collection\
+  - **`--dry-run` mode**: trial run does not write baseline, avoiding pollution from exploratory runs\
+  - **baseline write decoupled**: moved from CoverageChecker to Orchestrator post-processing; Checker is read-only\
   \
-  \*\*好处\*\*：10+ 项目零配置即可接入门禁，大幅降低 Week 1 的适配成本。\
+  **Benefit**: 10+ projects can onboard the gate with zero config, greatly reducing Week 1 adaptation cost.\
   \
-  \### 项目配置文件\
+  ### Project config file\
   \
-  \`\`\`yaml
+  ```yaml
 
   -----------------------------------------------------------------------------------------------------------------
 
@@ -379,133 +379,133 @@ auth_token_source: \"\"
   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   Plain Text\
   \
-  \> \*\*v5.0 配置变更\*\*：\
-  \> - 新增 \`preset\` 字段（infer-monorepo / java-maven / go / custom），大幅减少配置量\
-  \> - 移除 \`language\` 字段（由 Preset 自动识别）\
-  \> - 新增 \`coverage_floor_pct\`（底线保护）\
-  \> - 配置使用 \*\*Pydantic Schema 校验\*\*：拼写错误（如 \`coverge_tolerance_pct\`）会立即报错，不会被静默忽略\
-  \> - YAML 覆盖使用\*\*深合并\*\*：只写差异字段，不会丢失 Preset 默认值\
+  > **v5.0 config changes**:\
+  > - Added `preset` field (infer-monorepo / java-maven / go / custom), greatly reducing config volume\
+  > - Removed `language` field (detected automatically by Preset)\
+  > - Added `coverage_floor_pct` (floor protection)\
+  > - Config uses **Pydantic Schema validation**: typos (e.g. `coverge_tolerance_pct`) fail immediately, not silently ignored\
+  > - YAML overrides use **deep merge**: only write differing fields, Preset defaults are not lost\
   \
-  \### Day 1-5 逐日计划\
+  ### Day 1-5 Daily Plan\
   \
-  \> \*\*团队资源\*\*：3 人全职（Person A: 核心框架，Person B: 测试/解析，Person C: 适配/CI）\
-  \> \*\*交付优先级\*\*：P0 = 必须交付（缺失则里程碑不达标），P1 = 尽力交付（可顺延至 Week 2 首日补完）\
-  \> \*\*节奏原则\*\*：先跑通再优雅------Day 1 砍到骨架先让 1 个项目跑通，Preset D2 补，Pydantic D3 补\
+  > **Team**: 3 full-time (Person A: core framework, Person B: tests/parsing, Person C: onboarding/CI)\
+  > **Delivery priority**: P0 = must deliver (missing = milestone not met), P1 = best-effort (can carry over to Week 2 Day 1)\
+  > **Rhythm**: run first, polish later — Day 1 cuts to skeleton, get 1 project working; Preset added D2, Pydantic added D3\
   \
-  \#### Day 1：CLI 骨架 + BuildChecker + TestChecker（先跑通）\
+  #### Day 1: CLI skeleton + BuildChecker + TestChecker (get it running)\
   \
-  \| 任务 \| 负责 \| 产出 \| 优先级 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| 项目脚手架：目录结构、CLI 入口（typer）、YAML 配置加载（\*\*dict 加载，不上 Pydantic\*\*） \| Person A \| \`tomo-qa check\` 命令可执行 \| P0 \|\
-  \| 编译检测器：执行 build 命令 → 捕获 exit code + stderr → PASS/FAIL（含 timeout 300s → TIMEOUT） \| Person A \| BuildChecker \| P0 \|\
-  \| 单测运行器：执行 test 命令 → 解析通过/失败数 \| Person B \| TestChecker \| P0 \|\
-  \| 覆盖率采集器（基础版）：执行 coverage → 解析覆盖率数字 \| Person B \| CoverageChecker（基础） \| P0 \|\
-  \| 10+ 项目快速摸底：确认每个项目 build / test / lint / coverage 命令可用性 \| Person C \| 项目命令清单（含哪些命令可用、哪些不存在） \| P0 \|\
-  \| 为前 2-3 个项目创建配置 YAML + 验证命令可用 \| Person C \| \`projects/\*.yaml\` \| P0 \|\
+  | Task | Owner | Output | Priority |\
+  |------|-------|--------|----------|\
+  | Project scaffold: directory structure, CLI entry (typer), YAML config loading (**dict loading, no Pydantic yet**) | Person A | `agentshield check` command executable | P0 |\
+  | Build checker: run build command → capture exit code + stderr → PASS/FAIL (with timeout 300s → TIMEOUT) | Person A | BuildChecker | P0 |\
+  | Test runner: run test command → parse pass/fail counts | Person B | TestChecker | P0 |\
+  | Coverage collector (basic): run coverage → parse coverage number | Person B | CoverageChecker (basic) | P0 |\
+  | Quick survey of 10+ projects: confirm which build/test/lint/coverage commands are available | Person C | Project command list (available vs missing) | P0 |\
+  | Create config YAML for first 2-3 projects + validate commands work | Person C | `projects/*.yaml` | P0 |\
   \
-  \*\*Day 1 退出标准\*\*：1 个项目 \`tomo-qa check \--project \<name\>\` 能执行 build + test 检测，终端输出 PASS/FAIL。\*\*不要求 Preset 和 Pydantic\*\*。\
+  **Day 1 exit criteria**: 1 project can run `agentshield check` for build + test, terminal shows PASS/FAIL. **Preset and Pydantic not required yet**.\
   \
-  \#### Day 2：Lint + TypeCheck + Preset 系统 + 覆盖率解析 + 核心单测开始\
+  #### Day 2: Lint + TypeCheck + Preset system + Coverage parsing + Core unit tests begin\
   \
-  \| 任务 \| 负责 \| 产出 \| 优先级 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| Lint 检测器：执行 lint → 解析错误/警告数量（优先 JSON 输出，回退正则） \| Person A \| LintChecker \| P0 \|\
-  \| 类型检查器：执行 typecheck → 解析错误数 \| Person A \| TypeChecker \| P0 \|\
-  \| \*\*Preset 系统\*\*：PresetDetector + PresetRegistry + infer-monorepo preset + java-maven preset \| Person A \| 两种核心 Preset 可工作 \| P0 \|\
-  \| 覆盖率解析器：pytest-cov JSON + JaCoCo XML（覆盖 90% 项目） \| Person B \| PytestCovJSONParser + JacocoXMLParser \| P0 \|\
-  \| 阈值判定逻辑（门禁层 + 展示层 + \*\*自动基线模式 + floor_pct 底线\*\*） \| Person B \| 统一判定，10+ 项目零配置可用 \| P0 \|\
-  \| \*\*核心模块单测开始\*\*：parser / threshold / preset detector 关键路径单测 \| Person B \| tests/ 目录 + 首批单测 \| P0 \|\
-  \| 继续创建 4-6 个项目配置 YAML + 验证（含 Java 项目）+ Smoke 环境信息收集 \| Person C \| 更多项目可用 + env_status 标注 \| P0 \|\
+  | Task | Owner | Output | Priority |\
+  |------|-------|--------|----------|\
+  | Lint checker: run lint → parse error/warning count (prefer JSON output, fallback to regex) | Person A | LintChecker | P0 |\
+  | Type checker: run typecheck → parse error count | Person A | TypeChecker | P0 |\
+  | **Preset system**: PresetDetector + PresetRegistry + infer-monorepo + java-maven presets | Person A | Two core presets working | P0 |\
+  | Coverage parsers: pytest-cov JSON + JaCoCo XML (covers 90% of projects) | Person B | PytestCovJSONParser + JacocoXMLParser | P0 |\
+  | Threshold logic (gate layer + display layer + **auto-baseline + floor_pct**) | Person B | Unified judgment, 10+ projects zero-config ready | P0 |\
+  | **Core unit tests begin**: parser / threshold / preset detector critical path tests | Person B | tests/ directory + first batch of tests | P0 |\
+  | Create config YAML for 4-6 more projects + validate (including Java) + collect Smoke env info | Person C | More projects ready + env_status annotated | P0 |\
   \
-  \*\*Day 2 退出标准\*\*：1 个项目跑完全部检测（build + test + coverage + lint + typecheck），终端输出每项 PASS/FAIL + 覆盖率数字 + lint 错误数。infer-monorepo + java-maven 两种 Preset 均可工作。核心模块有首批单测。\
+  **Day 2 exit criteria**: 1 project runs full check (build + test + coverage + lint + typecheck), terminal shows PASS/FAIL per check + coverage number + lint error count. infer-monorepo + java-maven presets both work. Core modules have first unit tests.\
   \
-  \#### Day 3：批量运行 + 报告 + Pydantic 校验 + 深合并\
+  #### Day 3: Batch run + Report + Pydantic validation + Deep merge\
   \
-  \| 任务 \| 负责 \| 产出 \| 优先级 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| \`tomo-qa check-all\` 批量运行（ThreadPoolExecutor max_workers=4 + 容错 + timeout + \--strict/\--dry-run） \| Person A \| 一条命令跑所有项目 \| P0 \|\
-  \| baseline / results 文件\*\*原子写入\*\*（tmp→rename），防止并发写冲突 \| Person A \| 并发安全 \| P0 \|\
-  \| Markdown 报告生成器：汇总表 + 项目详情（含覆盖率展示层细节） \| Person B \| 报告文件 \| P0 \|\
-  \| 结果输出 JSON 格式 + \*\*Pydantic Schema 校验 + 深合并\*\*替换 Day 1 的 dict 加载 \| Person B \| \`results.json\` + 配置校验 \| P0 \|\
-  \| Slack/飞书 Webhook 通知：检测失败时推送汇总 \| Person C \| 通知到达（\*\*P1，默认关闭，W2 正式启用\*\*） \| P1 \|\
-  \| 完成剩余项目配置 YAML + 验证 \| Person C \| 10+ 项目全部有配置 \| P1 \|\
+  | Task | Owner | Output | Priority |\
+  |------|-------|--------|----------|\
+  | Batch run (ThreadPoolExecutor max_workers=4 + fault tolerance + timeout + --strict/--dry-run) | Person A | One command runs all projects | P0 |\
+  | baseline / results **atomic write** (tmp→rename), prevent concurrent write conflicts | Person A | Concurrency-safe | P0 |\
+  | Markdown report generator: summary table + project details (incl. coverage display layer) | Person B | Report file | P0 |\
+  | JSON output + **Pydantic Schema validation + deep merge** replacing Day 1 dict loading | Person B | `results.json` + config validation | P0 |\
+  | Slack/Feishu Webhook notification: push summary on check failure | Person C | Notification delivered (**P1, off by default, enabled in W2**) | P1 |\
+  | Complete remaining project config YAMLs + validate | Person C | 10+ projects all have config | P1 |\
   \
-  \*\*Day 3 退出标准\*\*：\`tomo-qa check-all\` 可跑通 6+ 项目，输出 Markdown 汇总报告。Pydantic 校验拼写错误有明确报错。\
+  **Day 3 exit criteria**: batch run works across 6+ projects, outputs Markdown summary report. Pydantic validation gives a clear error on typos.\
   \
-  \#### Day 4：全量适配 + 双面检测 + 单测补充\
+  #### Day 4: Full onboarding + dual-side checks + unit test coverage\
   \
-  \| 任务 \| 负责 \| 产出 \| 优先级 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| 修复 bug + 各项目检测命令边界情况处理 \| Person A \| 稳定性 \| P0 \|\
-  \| CheckerFactory 实现：infer-monorepo 项目后端+前端双面检测器列表 \| Person A \| 双面检测可用 \| P0 \|\
-  \| 退出码规范：全 PASS=0，有 FAIL=1，TIMEOUT/配置异常=2（CI-ready） \| Person A \| CI 可用 \| P0 \|\
-  \| 覆盖率解析器边界 case（空覆盖率 / NaN / 解析失败）+ \*\*核心单测补充\*\* \| Person B \| 解析器健壮性 + 测试覆盖 \| P0 \|\
-  \| 各项目适配调试：确保每个项目 build/test/lint 能正常执行 \| Person C \| 10+ 项目全可跑 \| P0 \|\
-  \| 汇总 Smoke 环境就绪情况，标注 \`env_status\`，输出 Week 2 候选列表 \| Person C \| Week 2 Smoke 候选列表 \| P0 \|\
+  | Task | Owner | Output | Priority |\
+  |------|-------|--------|----------|\
+  | Bug fixes + handle edge cases in project check commands | Person A | Stability | P0 |\
+  | CheckerFactory: infer-monorepo projects run backend + frontend checker lists | Person A | Dual-side checks working | P0 |\
+  | Exit code spec: all PASS=0, any FAIL=1, TIMEOUT/config error=2 (CI-ready) | Person A | CI-ready | P0 |\
+  | Coverage parser edge cases (empty coverage / NaN / parse failure) + **unit test coverage** | Person B | Parser robustness + test coverage | P0 |\
+  | Onboarding debug for each project: ensure build/test/lint execute correctly | Person C | 10+ projects all runnable | P0 |\
+  | Summarise Smoke env readiness, annotate `env_status`, output Week 2 candidate list | Person C | Week 2 Smoke candidate list | P0 |\
   \
-  \*\*Day 4 退出标准\*\*：10+ 项目中至少 80% 可跑通 \`tomo-qa check\`。Smoke 环境信息收集完毕。核心模块单测通过。\
+  **Day 4 exit criteria**: at least 80% of 10+ projects can run `agentshield check`. Smoke env info collected. Core module unit tests pass.\
   \
-  \#### Day 5：全量验证 + 首版发布（下午为 buffer）\
+  #### Day 5: Full validation + first release (afternoon = buffer)\
   \
-  \| 任务 \| 负责 \| 产出 \| 优先级 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| 全部 10+ 项目端到端验证 \| 全员 \| 全量通过 \| P0 \|\
-  \| 汇总报告优化：排序、高亮重点问题 \| Person A \| 汇总报告 \| P0 \|\
-  \| README + 接入指南（5 分钟接入新项目，含 Preset 说明） \| Person B \| 文档 \| P0 \|\
-  \| \*\*首版内部发布\*\* --- 通知所有项目团队 \| 全员 \| 内部通知 \| P0 \|\
-  \| 收集反馈 + 标注已知问题 \| Person C \| KNOWN_ISSUES.md \| P1 \|\
-  \| \*\*\[下午\] Buffer\*\*：修复 W1 遗留 bug / 处理反馈 \| 全员 \| 稳定性 \| --- \|\
+  | Task | Owner | Output | Priority |\
+  |------|-------|--------|----------|\
+  | End-to-end validation for all 10+ projects | All | Full pass | P0 |\
+  | Summary report polish: sort, highlight key issues | Person A | Summary report | P0 |\
+  | README + onboarding guide (5-min new project onboarding, incl. Preset explanation) | Person B | Docs | P0 |\
+  | **First internal release** — notify all project teams | All | Internal notification | P0 |\
+  | Collect feedback + annotate known issues | Person C | KNOWN_ISSUES.md | P1 |\
+  | **[Afternoon] Buffer**: fix W1 leftover bugs / handle feedback | All | Stability | — |\
   \
-  \### Week 1 成功标准\
+  ### Week 1 Success Criteria\
   \
-  \*\*按\"接入率 + 统一托管\"定义，不按测试类型数定义：\*\*\
+  **Defined by onboarding rate + unified hosting, not by number of test types:**\
   \
-  \| \# \| 标准 \| 目标 \| 优先级 \|\
-  \|\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\
-  \| 1 \| 10+ 项目中接入基础门禁的比例 \| \*\*≥ 70-80%\*\*（即至少 7-8 个项目可跑通） \| P0 \|\
-  \| 2 \| 核心 Preset 可用 \| infer-monorepo + java-maven 两种 Preset 自动检测可工作 \| P0 \|\
-  \| 3 \| 每个接入项目至少能跑的检测 \| build + lint + unit test + coverage（typecheck 按项目情况） \| P0 \|\
-  \| 4 \| 能统一输出结果 \| \`tomo-qa check-all\` → Markdown 汇总报告 + JSON \| P0 \|\
-  \| 5 \| 配置校验 \| Pydantic Schema 校验可用，拼写错误/类型错误有明确报错 \| P0 \|\
-  \| 6 \| 核心模块有单测 \| parser / threshold / preset detector 关键路径有单测保护 \| P0 \|\
-  \| 7 \| Smoke 环境信息收集 \| 所有项目标注 \`env_status\`，输出 Week 2 Smoke 候选列表 \| P0 \|\
-  \| 8 \| 新项目接入成本 \| \< 5 分钟（Preset 项目 \< 1 分钟） \| P0 \|\
-  \| 9 \| 通知实现 \| Slack/飞书通知功能已实现（默认关闭，W2 随 CI 正式启用） \| P1 \|\
+  | # | Criterion | Target | Priority |\
+  |---|-----------|--------|----------|\
+  | 1 | % of 10+ projects with basic gate onboarded | **≥ 70-80%** (at least 7-8 projects running) | P0 |\
+  | 2 | Core presets available | infer-monorepo + java-maven auto-detection both work | P0 |\
+  | 3 | Minimum checks per onboarded project | build + lint + unit test + coverage (typecheck per project) | P0 |\
+  | 4 | Unified result output | `agentshield check` → Markdown summary report + JSON | P0 |\
+  | 5 | Config validation | Pydantic Schema available, typos/type errors reported clearly | P0 |\
+  | 6 | Core modules have unit tests | parser / threshold / preset detector critical paths covered | P0 |\
+  | 7 | Smoke env info collected | All projects annotated with `env_status`, Week 2 candidate list output | P0 |\
+  | 8 | New project onboarding cost | < 5 minutes (Preset project < 1 minute) | P0 |\
+  | 9 | Notification implemented | Slack/Feishu notification built (off by default, enabled in W2 with CI) | P1 |\
   \
-  \### 报告示例\
+  ### Report Example\
   \
-  \`\`\`markdown\
-  \# QA Agent 检测报告 --- 2026-04-01\
+  ```markdown\
+  # QA Agent Check Report — 2026-04-01\
   \
-  \## 汇总\
+  ## Summary\
   \
-  \| 项目 \| 编译 \| 单测 \| 覆盖率 \| Lint \| 类型检查 \| 总评 \|\
-  \|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\--\|\-\-\-\-\--\|\-\-\-\-\-\-\-\--\|\-\-\-\-\--\|\
-  \| wallet-service \| ✅ \| ✅ \| ⚠️ 72% (门禁60%✅ 目标100%差28%) \| ✅ 0 err \| ✅ 0 err \| ✅ \|\
-  \| reward-service \| ✅ \| ✅ \| ✅ 85% \| ❌ 12 err \| ✅ 0 err \| ❌ \|\
-  \| agentpay-sdk \| ❌ 编译失败 \| ⏭️ \| ⏭️ \| ⏭️ \| ⏭️ \| ❌ \|\
-  \| user-service \| ✅ \| ✅ \| ✅ 91% \| ✅ 0 err \| ✅ 0 err \| ✅ \|\
-  \| sentinel \| ✅ \| ⚠️ 2 fail \| ⚠️ 55% (门禁50%✅ 目标100%差45%) \| ✅ 3 warn \| N/A \| ⚠️ \|\
-  \| \... \| \... \| \... \| \... \| \... \| \... \| \... \|\
+  | Project | Build | Tests | Coverage | Lint | TypeCheck | Result |\
+  |---------|-------|-------|----------|------|-----------|--------|\
+  | wallet-service | ✅ | ✅ | ⚠️ 72% (gate 60% ✅ target 100% -28%) | ✅ 0 err | ✅ 0 err | ✅ |\
+  | reward-service | ✅ | ✅ | ✅ 85% | ❌ 12 err | ✅ 0 err | ❌ |\
+  | agentpay-sdk | ❌ build failed | ⏭️ | ⏭️ | ⏭️ | ⏭️ | ❌ |\
+  | user-service | ✅ | ✅ | ✅ 91% | ✅ 0 err | ✅ 0 err | ✅ |\
+  | sentinel | ✅ | ⚠️ 2 fail | ⚠️ 55% (gate 50% ✅ target 100% -45%) | ✅ 3 warn | N/A | ⚠️ |\
+  | ... | ... | ... | ... | ... | ... | ... |\
   \
-  \*\*接入：10/12 \| 全通过：4 \| 有警告：3 \| 有失败：3 \| 未接入：2\*\*\
+  **Onboarded: 10/12 | All pass: 4 | Warning: 3 | Failing: 3 | Not onboarded: 2**\
   \
-  \-\--\
+  ---\
   \
-  \## 详情\
+  ## Details\
   \
-  \### wallet-service\
-  - \*\*编译\*\*：✅ PASS（12.3s）\
-  - \*\*单测\*\*：✅ 42/42 passed\
-  - \*\*覆盖率\*\*：⚠️ 门禁通过，但距目标有差距
+  ### wallet-service\
+  - **Build**: ✅ PASS (12.3s)\
+  - **Tests**: ✅ 42/42 passed\
+  - **Coverage**: ⚠️ gate passed, but below target
 
   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Line coverage: 72.3 % ████████░░ （ access control 60% ✅ \| target 100% difference 27.7%)
+Line coverage: 72.3 % ████████░░ ( access control 60% ✅ \| target 100% difference 27.7%)
 
-Function coverage: 65.0 % ███████░░░ （ access 50% ✅ \| target 100% difference 35.0%)
+Function coverage: 65.0 % ███████░░░ ( access 50% ✅ \| target 100% difference 35.0%)
 
-Branch coverage: 58.2 % ██████░░░░ （ access 40% ✅ \| target 100% difference 41.8%)
+Branch coverage: 58.2 % ██████░░░░ ( access 40% ✅ \| target 100% difference 41.8%)
 
 Documents with the lowest coverage (TOP 5):
 
@@ -521,11 +521,11 @@ Src/models/transaction.ts - line 63.5% \| function 62.0%
 
   -----------------------------------------------------------------------
   Plain Text\
-  - \*\*Lint\*\*：✅ 0 errors, 8 warnings\
-  - \*\*类型检查\*\*：✅ 0 errors\
+  - **Lint**: ✅ 0 errors, 8 warnings\
+  - **TypeCheck**: ✅ 0 errors\
   \
-  \### agentpay-sdk\
-  - \*\*编译\*\*：❌ FAIL
+  ### agentpay-sdk\
+  - **Build**: ❌ FAIL
 
   -----------------------------------------------------------------------
 
@@ -541,7 +541,7 @@ src/config/index.ts:12:3
 
   -----------------------------------------------------------------------
   Plain Text\
-  - \*\*其他检测\*\*：⏭️ 编译未通过，后续检测跳过
+  - **Other checks**: ⏭️ build failed, subsequent checks skipped
 
   -----------------------------------------------------------------------
 
@@ -770,24 +770,24 @@ src/config/index.ts:12:3
 
   ------------------------------------------------------------------------------
   Plain Text\
-  Week 1 Week 2 Week 3 Week 4\
-  Day 1─────Day 5 Day 6─────Day 10 Day 11────Day 15 Day 16────Day 20\
-  │ │ ½d buf │ │ ½d buf │ │ ½d buf │ │ ½d buf\
-  ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼\
-  D1:骨架跑通 首版 CI nightly HTML Smoke 扩面 回归 汇总看板 MVP\
-  D2:Preset+单测 发布 Smoke(手写YAML) 报告 OpenAPI 解析 Baseline Bug fix 交付\
-  D3:批量+报告 ✅ 通知正式启用 回归检测 存储 Demo + 稳定化 ✅\
-  D4-5:适配验证 go Preset+init (无专项/SDK) 文档+CI稳定\
-  pre-flight+重试 (零新功能)\
+  Week 1          Week 2              Week 3              Week 4\
+  Day 1─────Day 5 Day 6─────Day 10   Day 11────Day 15    Day 16────Day 20\
+  │  │ ½d buf    │  │ ½d buf         │  │ ½d buf         │  │ ½d buf\
+  ▼  ▼            ▼  ▼                ▼  ▼                ▼  ▼\
+  D1:skeleton     CI nightly  HTML    Smoke expand  Regr  Summary   MVP\
+  D2:Preset+tests First       Smoke   Report  OpenAPI     Baseline  Bug fix  Done\
+  D3:batch+report release ✅  Notify  Regr    Parsing     Storage   Demo + stable ✅\
+  D4-5:onboarding             go+init (no templates/SDK) Docs+CI stable\
+                              pre-flight+retry            (zero new features)\
   \
-  ──── 基础门禁版 ──── ── Smoke 试点版 ── ── 扩面 + 回归 ── ──── 收口 ────\
-  先跑通再优雅\
+  ──── Basic Gate ──── ── Smoke Pilot ── ── Expand + Guard ── ──── Close ────\
+                       run first, polish later\
   \
-  10+ 项目接入 Smoke 从零搭建 回归守护 连续 3 天 green\
-  统一跑 + 统一看 通知正式启用 OpenAPI 自动解析 Demo ready\
-  2种核心 Preset tomo-qa init 回归告警通知 文档完善\
-  核心单测开始 go Preset + pre-flight Smoke 深度稳定 (无 adapter hook)\
-  Smoke 环境信息收集 HTML 报告 + CI nightly
+  10+ projects onboarded   Smoke built from scratch   Regression guard    3 consecutive days green\
+  unified run + view       notifications live         OpenAPI auto-parse  Demo ready\
+  2 core Presets           agentshield init           regression alerts   docs complete\
+  core unit tests begin    go Preset + pre-flight     Smoke stable        (no adapter hook)\
+  Smoke env info collected HTML report + CI nightly
 
   ------------------------------------------------------------------------------
 
@@ -840,7 +840,7 @@ Cover at least 2 types of Presets (such as 1 inferno-monorepo + 1 java-maven + 1
 
   **Process management**     subprocess                             Execute the build/test/lint commands for each project
 
-  **Concurrent execution**   ThreadPoolExecutor（max_workers=4）    I/O intensive (call process), no need for ProcessPoolExecutor
+  **Concurrent execution**   ThreadPoolExecutor(max_workers=4)    I/O intensive (call process), no need for ProcessPoolExecutor
 
   **Timeout control**        Subprocess timeout (default 300s)      Timeout flag TIMEOUT status (different from FAIL)
 
@@ -848,9 +848,9 @@ Cover at least 2 types of Presets (such as 1 inferno-monorepo + 1 java-maven + 1
 
   **Coverage analysis**      Self-writing parser                    Support jest JSON/pytest-cov JSON/JaCoCo XML/lcov/go cover
 
-  **HTTP Client**            httpx（Week 2+）                       API testing, including pre-flight + retry, can evolve AsyncClient later.
+  **HTTP Client**            httpx(Week 2+)                       API testing, including pre-flight + retry, can evolve AsyncClient later.
 
-  **Report**                 Markdown（W1）→ Jinja2 HTML（W2+）     Progressive upgrade
+  **Report**                 Markdown(W1)→ Jinja2 HTML(W2+)     Progressive upgrade
 
   **CI**                     GitHub Actions                         Already
 
@@ -865,72 +865,72 @@ Cover at least 2 types of Presets (such as 1 inferno-monorepo + 1 java-maven + 1
 
   ---------------------------------------------------------------------------------
   Plain Text\
-  tomo-qa/\
+  agentshield/\
   ├── cli/\
-  │ └── main.py \# CLI 入口（typer，\--strict / \--dry-run 支持）\
+  │ └── main.py              # CLI entry point (typer, --strict / --dry-run support)\
   │\
-  ├── models/ \# v5.0 新增：Pydantic 配置模型\
-  │ ├── config.py \# ProjectConfig / ThresholdsConfig / SmokeEnvConfig\
-  │ └── result.py \# CheckResult / ProjectResult\
+  ├── models/                # v5.0: Pydantic config models\
+  │ ├── config.py            # ProjectConfig / ThresholdsConfig / SmokeEnvConfig\
+  │ └── result.py            # CheckResult / ProjectResult\
   │\
-  ├── presets/ \# v5.0 新增：Preset 系统\
-  │ ├── base.py \# PresetBase + PresetRegistry\
-  │ ├── detector.py \# PresetDetector（自动检测项目类型）\
-  │ ├── infer_monorepo.py \# infer-monorepo preset（Week 1）\
-  │ ├── java_maven.py \# java-maven preset（Week 1）\
-  │ └── go.py \# go preset（Week 2）\
+  ├── presets/               # v5.0: Preset system\
+  │ ├── base.py              # PresetBase + PresetRegistry\
+  │ ├── detector.py          # PresetDetector (auto-detect project type)\
+  │ ├── infer_monorepo.py    # infer-monorepo preset (Week 1)\
+  │ ├── java_maven.py        # java-maven preset (Week 1)\
+  │ └── go.py                # go preset (Week 2)\
   │\
-  ├── orchestrator/ \# v5.0 新增：编排层\
-  │ ├── orchestrator.py \# 单项目编排（CheckerFactory + 后处理 baseline）\
-  │ └── batch.py \# BatchOrchestrator（ThreadPoolExecutor 并发）\
+  ├── orchestrator/          # v5.0: Orchestration layer\
+  │ ├── orchestrator.py      # Single-project orchestration (CheckerFactory + baseline post-processing)\
+  │ └── batch.py             # BatchOrchestrator (ThreadPoolExecutor concurrency)\
   │\
-  ├── checkers/ \# Week 1：代码质量检测器\
-  │ ├── base.py \# 检测器基类\
-  │ ├── factory.py \# CheckerFactory（按 Preset 动态创建检测器列表）\
-  │ ├── build_checker.py \# 编译检测\
-  │ ├── test_checker.py \# 单测执行\
-  │ ├── coverage_checker.py \# 覆盖率采集 + 阈值判定（只读 baseline）\
-  │ ├── lint_checker.py \# Lint 检测（JSON 优先 + 正则回退）\
-  │ └── typecheck_checker.py \# 类型检查\
+  ├── checkers/              # Week 1: code quality checkers\
+  │ ├── base.py              # Checker base class\
+  │ ├── factory.py           # CheckerFactory (dynamically creates checker list by Preset)\
+  │ ├── build_checker.py     # Build check\
+  │ ├── test_checker.py      # Unit test execution\
+  │ ├── coverage_checker.py  # Coverage collection + threshold judgment (read-only baseline)\
+  │ ├── lint_checker.py      # Lint check (JSON preferred + regex fallback)\
+  │ └── typecheck_checker.py # Type check\
   │\
-  ├── parsers/ \# 输出解析\
-  │ ├── coverage/ \# jest / pytest-cov / JaCoCo XML / lcov / go cover\
-  │ └── lint/ \# eslint / ruff / golint / checkstyle\
+  ├── parsers/               # Output parsers\
+  │ ├── coverage/            # jest / pytest-cov / JaCoCo XML / lcov / go cover\
+  │ └── lint/                # eslint / ruff / golint / checkstyle\
   │\
-  ├── api_testing/ \# Week 2+：API 测试\
-  │ ├── analyzer/ \# spec 解析\
-  │ ├── generator/ \# 用例生成（smoke）--- boundary / auth / financial → Month 2\
-  │ └── runner/ \# httpx 执行（含 pre-flight + 重试）\
+  ├── api_testing/           # Week 2+: API testing\
+  │ ├── analyzer/            # spec parsing\
+  │ ├── generator/           # test case generation (smoke) — boundary/auth/financial → Month 2\
+  │ └── runner/              # httpx execution (incl. pre-flight + retry)\
   │\
-  ├── tracker/ \# Week 3：回归追踪\
-  │ ├── baseline.py \# BaselineWriter（Orchestrator 调用）\
+  ├── tracker/               # Week 3: regression tracking\
+  │ ├── baseline.py          # BaselineWriter (called by Orchestrator)\
   │ └── diff.py\
   │\
   ├── reporter/\
-  │ ├── markdown_reporter.py \# Week 1\
-  │ ├── html_reporter.py \# Week 2\
-  │ ├── json_reporter.py \# Week 1（机器消费）\
-  │ └── templates/ \# Jinja2 HTML 模板\
+  │ ├── markdown_reporter.py # Week 1\
+  │ ├── html_reporter.py     # Week 2\
+  │ ├── json_reporter.py     # Week 1 (machine-consumable)\
+  │ └── templates/           # Jinja2 HTML templates\
   │\
-  ├── notifier/ \# Week 1：通知\
+  ├── notifier/              # Week 1: notifications\
   │ ├── slack.py\
   │ └── feishu.py\
   │\
   ├── utils/\
-  │ ├── deep_merge.py \# 配置深合并\
-  │ ├── atomic_write.py \# 原子写入（tmp→rename）\
-  │ └── retention.py \# DataRetentionPolicy（过期清理）\
+  │ ├── deep_merge.py        # Config deep merge\
+  │ ├── atomic_write.py      # Atomic write (tmp→rename)\
+  │ └── retention.py         # DataRetentionPolicy (expired file cleanup)\
   │\
-  ├── tests/ \# v5.1 新增：tomo-qa 自身测试\
-  │ ├── test_parsers/ \# parser 单测（coverage / lint）\
-  │ ├── test_threshold.py \# 阈值判定逻辑单测\
-  │ ├── test_preset_detector.py \# Preset 检测逻辑单测\
-  │ └── test_config_validation.py \# Pydantic 校验单测\
+  ├── tests/                 # v5.1: agentshield self-tests\
+  │ ├── test_parsers/        # parser unit tests (coverage / lint)\
+  │ ├── test_threshold.py    # threshold logic unit tests\
+  │ ├── test_preset_detector.py # Preset detection logic unit tests\
+  │ └── test_config_validation.py # Pydantic validation unit tests\
   │\
-  ├── projects/ \# 项目配置（每个项目一个 YAML，含 preset + smoke_env 字段）\
-  ├── .qa-agent/ \# 运行时数据（reports / baselines / audit / logs）\
-  ├── .github/workflows/ \# CI 配置\
-  ├── requirements.txt \# 含 pydantic\>=2.0.0\
+  ├── projects/              # Project configs (one YAML per project, incl. preset + smoke_env)\
+  ├── .qa-agent/             # Runtime data (reports / baselines / audit / logs)\
+  ├── .github/workflows/     # CI config\
+  ├── requirements.txt       # incl. pydantic>=2.0.0\
   └── README.md
 
   ---------------------------------------------------------------------------------
