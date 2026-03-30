@@ -15,6 +15,7 @@
     "lint": "pnpm lint:web && pnpm lint:api",
     "typecheck": "pnpm typecheck:web && pnpm typecheck:api",
     "test": "pnpm test:web && pnpm test:api",
-    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi"
+    "check:chinese": "python scripts/check_no_chinese.py",
+    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi && pnpm check:chinese"
   }
 }
