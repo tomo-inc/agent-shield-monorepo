@@ -3,18 +3,25 @@
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
+    "agentshield:check": "uv run --project packages/cli agentshield check",
+    "agentshield:init": "uv run --project packages/cli agentshield init --yes",
+    "agentshield:scan": "uv run --project packages/cli agentshield scan",
     "dev:web": "pnpm --filter @agentshield/web dev",
     "build:web": "pnpm --filter @agentshield/web build",
     "lint:web": "pnpm --filter @agentshield/web lint",
     "typecheck:web": "pnpm --filter @agentshield/web typecheck",
     "test:web": "pnpm --filter @agentshield/web test",
     "lint:api": "uv run --project apps/api ruff check apps/api/app apps/api/tests",
+    "lint:cli": "uv run --project packages/cli ruff check packages/cli/agentshield_cli packages/cli/tests",
     "typecheck:api": "uv run --project apps/api pyright apps/api/app apps/api/tests",
+    "typecheck:cli": "uv run --project packages/cli pyright packages/cli/agentshield_cli packages/cli/tests",
     "test:api": "uv run --project apps/api pytest apps/api/tests",
+    "test:cli": "uv run --project packages/cli pytest packages/cli/tests",
     "check:openapi": "uv run --project apps/api python scripts/export_openapi.py --check",
-    "lint": "pnpm lint:web && pnpm lint:api",
-    "typecheck": "pnpm typecheck:web && pnpm typecheck:api",
-    "test": "pnpm test:web && pnpm test:api",
-    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi"
+    "lint": "pnpm lint:web && pnpm lint:api && pnpm lint:cli",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:api && pnpm typecheck:cli",
+    "test": "pnpm test:web && pnpm test:api && pnpm test:cli",
+    "check:chinese": "python3 scripts/check_no_chinese.py",
+    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:openapi && pnpm check:chinese"
   }
 }

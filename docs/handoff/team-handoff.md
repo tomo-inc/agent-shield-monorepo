@@ -74,10 +74,10 @@ New team members should read in this order:
 5. `docs/contracts/db-state-model.md`
 6. `docs/contracts/test-spec.md`
 
-For background on the original research inputs:
+For background on the original research inputs, refer to the PRD and architecture documents:
 
-- `docs/Ai Agent 友好型 开发指南.docx`
-- `docs/AagentShield QA自动化功能 可行性调研.docx`
+- `docs/prd/AgentShield-PRD.md`
+- `docs/architecture/AgentShield-Complete-Technical-Solution-Week1.md`
 
 ## Current State
 

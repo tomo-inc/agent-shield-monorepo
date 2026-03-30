@@ -39,5 +39,8 @@ jobs:
       - name: Install API dependencies
         run: uv sync --project apps/api --extra dev
 
+      - name: Install CLI dependencies
+        run: uv sync --project packages/cli --extra dev
+
       - name: Run quality gate
         run: pnpm run ci
