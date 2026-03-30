@@ -41,7 +41,7 @@ def test_panel_project_register_and_overview_are_idempotent() -> None:
         "project_key": "infer-monorepo",
         "project_name": "infer-monorepo",
         "repo_path": ".",
-        "preset": "infer-monorepo",
+        "preset": None,
         "onboarding_status": "ready",
         "modules": [
             {"module_name": "apps/api", "stack": "Python / FastAPI", "language": "Python"},
@@ -75,7 +75,7 @@ def test_panel_run_upload_and_read_queries() -> None:
         "project_key": "infer-monorepo",
         "project_name": "infer-monorepo",
         "repo_path": ".",
-        "preset": "infer-monorepo",
+        "preset": None,
         "onboarding_status": "ready",
         "modules": [
             {"module_name": "apps/api", "stack": "Python / FastAPI", "language": "Python"},
@@ -172,7 +172,7 @@ def test_panel_latest_run_requires_existing_run() -> None:
         "project_key": "infer-monorepo",
         "project_name": "infer-monorepo",
         "repo_path": ".",
-        "preset": "infer-monorepo",
+        "preset": None,
         "onboarding_status": "ready",
         "modules": [{"module_name": "apps/api", "stack": "Python / FastAPI", "language": "Python"}],
     }
@@ -184,3 +184,81 @@ def test_panel_latest_run_requires_existing_run() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "RUN_NOT_FOUND"
+
+
+def test_panel_baseline_upload_requires_existing_project() -> None:
+    session_factory = _make_test_session_factory()
+    app.dependency_overrides[get_db] = _make_db_override(session_factory)
+    client = TestClient(app)
+
+    payload = {
+        "project_key": "missing-project",
+        "updated_at": "2026-03-30T10:00:00Z",
+        "modules": [{"module_name": "apps/api", "baseline_pct": 81.0}],
+    }
+
+    response = client.post("/api/v1/panel/baselines", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "PROJECT_NOT_FOUND"
+
+
+def test_panel_run_upload_requires_existing_project() -> None:
+    session_factory = _make_test_session_factory()
+    app.dependency_overrides[get_db] = _make_db_override(session_factory)
+    client = TestClient(app)
+
+    payload = {
+        "project_key": "missing-project",
+        "run_key": "run-1",
+        "strict_mode": False,
+        "status": "pass",
+        "modules": [],
+    }
+
+    response = client.post("/api/v1/panel/runs", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "PROJECT_NOT_FOUND"
+
+
+def test_panel_project_detail_requires_existing_project() -> None:
+    session_factory = _make_test_session_factory()
+    app.dependency_overrides[get_db] = _make_db_override(session_factory)
+    client = TestClient(app)
+
+    response = client.get("/api/v1/panel/projects/missing-project")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "PROJECT_NOT_FOUND"
+
+
+def test_panel_project_detail_returns_empty_latest_run_when_project_has_no_runs() -> None:
+    session_factory = _make_test_session_factory()
+    app.dependency_overrides[get_db] = _make_db_override(session_factory)
+    client = TestClient(app)
+
+    register_payload = {
+        "project_key": "infer-monorepo",
+        "project_name": "infer-monorepo",
+        "repo_path": ".",
+        "preset": None,
+        "onboarding_status": "pending",
+        "modules": [{"module_name": "apps/api", "stack": None, "language": None}],
+    }
+    assert client.post("/api/v1/panel/projects/register", json=register_payload).status_code == 200
+
+    response = client.get("/api/v1/panel/projects/infer-monorepo")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["project"]["latest_run"] is None
+    assert body["project"]["modules"] == []

@@ -87,3 +87,21 @@ def test_check_prints_start_message_when_config_exists(monkeypatch, tmp_path: Pa
     assert "Config loaded: .agentshield/config.yaml" in captured
     assert "Running checks for 1 module(s)..." in captured
     assert "[apps/api] Build" in captured
+
+
+def test_check_syncs_run_after_report_write(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    config_dir = tmp_path / ".agentshield"
+    config_dir.mkdir(parents=True)
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(_full_check_yaml("apps/api"), encoding="utf-8")
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "agentshield_cli.cli.sync_run",
+        lambda config, report, *, baseline_dir: calls.append((config.project.name, report.status)),
+    )
+
+    exit_code = main(["check"])
+
+    assert exit_code == 0
+    assert calls == [("demo", "pass")]

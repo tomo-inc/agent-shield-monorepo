@@ -5,6 +5,7 @@ import json
 import shlex
 import sys
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 from agentshield_cli.analyzer.ai_client import ScanAPIError, run_scan
@@ -27,6 +28,7 @@ from agentshield_cli.config import AgentShieldConfig, CheckConfig, load_config
 from agentshield_cli.history import group_checks_by_module, list_run_reports, latest_run_report, summarize_checks
 from agentshield_cli.llm import resolve_llm_settings
 from agentshield_cli.models import CheckResult, ScanModuleSuggestion, ScanReport
+from agentshield_cli.panel_sync import sync_baselines, sync_project_register, sync_run
 from agentshield_cli.runner import run_checks
 
 BASELINE_DIR = Path(".agentshield/baselines")
@@ -470,6 +472,13 @@ def _handle_baseline_update(module_filter: str | None) -> int:
     print("Baseline updated successfully")
     for path in written_paths:
         print(f"- {path}")
+    config, _, _ = load_config()
+    sync_baselines(
+        config,
+        baseline_dir=BASELINE_DIR,
+        updated_at=datetime.now(timezone.utc),
+        module_names=modules,
+    )
     return 0
 
 
@@ -595,6 +604,16 @@ def main(argv: list[str] | None = None) -> int:
             initialized_baselines=len(initialized_baselines),
             run_record=Path(run_report.run_file),
         )
+        registered = sync_project_register(
+            generated_config,
+            "ready" if run_report.status == "pass" else "blocked",
+        )
+        if registered and initialized_baselines:
+            sync_baselines(
+                generated_config,
+                baseline_dir=BASELINE_DIR,
+                updated_at=datetime.now(timezone.utc),
+            )
         if run_report.status != "pass":
             _print_report(run_report)
             return 1
@@ -668,6 +687,17 @@ def main(argv: list[str] | None = None) -> int:
         progress_callback=_progress_callback,
     )
     initialized_baselines = [] if args.dry_run else ensure_initial_baselines(report, BASELINE_DIR)
+    if not config_exists and not args.dry_run:
+        registered = sync_project_register(
+            config,
+            "ready" if report.status == "pass" else "blocked",
+        )
+        if registered and initialized_baselines:
+            sync_baselines(
+                config,
+                baseline_dir=BASELINE_DIR,
+                updated_at=datetime.now(timezone.utc),
+            )
     _print_summary(
         Path(report.run_file),
         used_config_file,
@@ -676,6 +706,8 @@ def main(argv: list[str] | None = None) -> int:
         initialized_baselines=initialized_baselines,
     )
     _print_report(report)
+    if not args.dry_run:
+        sync_run(config, report, baseline_dir=BASELINE_DIR)
 
     if args.strict and report.status != "pass":
         return 1

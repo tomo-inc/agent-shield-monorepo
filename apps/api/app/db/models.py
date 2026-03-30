@@ -23,7 +23,7 @@ class PanelProject(Base):
     project_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     project_name: Mapped[str] = mapped_column(String, nullable=False)
     repo_path: Mapped[str] = mapped_column(String, nullable=False)
-    preset: Mapped[str] = mapped_column(String, nullable=False)
+    preset: Mapped[str | None] = mapped_column(String)
     onboarding_status: Mapped[str] = mapped_column(String, nullable=False)
     commands_json: Mapped[dict[str, str] | None] = mapped_column(JsonType)
     thresholds_json: Mapped[dict[str, Any] | None] = mapped_column(JsonType)

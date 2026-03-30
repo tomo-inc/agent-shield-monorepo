@@ -17,6 +17,7 @@
     "typecheck:cli": "uv run --project packages/cli pyright packages/cli/agentshield_cli packages/cli/tests",
     "test:api": "uv run --project apps/api pytest apps/api/tests",
     "test:cli": "uv run --project packages/cli pytest packages/cli/tests",
+    "test:smoke:panel": "uv run --project packages/cli --extra dev pytest tests/smoke/test_panel_local_e2e.py -s",
     "check:openapi": "uv run --project apps/api python scripts/export_openapi.py --check",
     "lint": "pnpm lint:web && pnpm lint:api && pnpm lint:cli",
     "typecheck": "pnpm typecheck:web && pnpm typecheck:api && pnpm typecheck:cli",

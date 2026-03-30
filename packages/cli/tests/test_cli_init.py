@@ -65,6 +65,8 @@ def test_check_auto_initializes_when_config_missing(monkeypatch, tmp_path: Path)
     monkeypatch.chdir(tmp_path)
     config_dir = tmp_path / ".agentshield"
     written_config = config_dir / "config.yaml"
+    register_calls: list[str] = []
+    baseline_calls: list[str] = []
 
     def fake_initialize_project(*, bootstrap_config, config_path, used_config_file):
         del bootstrap_config, used_config_file
@@ -85,10 +87,14 @@ def test_check_auto_initializes_when_config_missing(monkeypatch, tmp_path: Path)
         )
 
     monkeypatch.setattr("agentshield_cli.cli.initialize_project", fake_initialize_project)
+    monkeypatch.setattr("agentshield_cli.cli.sync_project_register", lambda config, status: register_calls.append(status) or True)
+    monkeypatch.setattr("agentshield_cli.cli.sync_baselines", lambda config, *, baseline_dir, updated_at, module_names=None: baseline_calls.append(config.project.name) or True)
     exit_code = main(["check", "--strict"])
 
     assert exit_code == 0
     assert written_config.exists()
+    assert register_calls == ["ready"]
+    assert baseline_calls == ["demo"]
 
 
 def test_check_no_init_fails_without_config(monkeypatch, tmp_path: Path) -> None:

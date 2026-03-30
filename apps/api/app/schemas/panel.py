@@ -45,7 +45,7 @@ class PanelProjectRegisterRequest(BaseModel):
     project_key: str = Field(description="Stable project identifier")
     project_name: str = Field(description="Display name")
     repo_path: str = Field(description="Repository path")
-    preset: str = Field(description="CLI resolved preset")
+    preset: str | None = Field(default=None, description="CLI resolved preset")
     onboarding_status: PanelOnboardingStatus = Field(description="Current onboarding state")
     commands: PanelProjectCommands | None = Field(default=None, description="Project-level commands")
     thresholds: PanelProjectThresholds | None = Field(default=None, description="Threshold configuration")
@@ -132,7 +132,7 @@ class PanelLatestRunRef(BaseModel):
 class PanelOverviewProject(BaseModel):
     project_key: str = Field(description="Stable project identifier")
     project_name: str = Field(description="Display name")
-    preset: str = Field(description="CLI resolved preset")
+    preset: str | None = Field(description="CLI resolved preset")
     module_count: int = Field(description="Number of modules under the project")
     onboarding_status: PanelOnboardingStatus = Field(description="Current onboarding state")
     health: PanelHealthStatus = Field(description="Derived project health")
@@ -149,7 +149,7 @@ class PanelProjectOverviewResponse(BaseModel):
 class PanelProjectDetail(BaseModel):
     project_key: str = Field(description="Stable project identifier")
     project_name: str = Field(description="Display name")
-    preset: str = Field(description="CLI resolved preset")
+    preset: str | None = Field(description="CLI resolved preset")
     onboarding_status: PanelOnboardingStatus = Field(description="Current onboarding state")
     latest_run: PanelLatestRunRef | None = Field(default=None, description="Latest run summary")
     modules: list[PanelRunModule] = Field(description="Latest run module cards")
