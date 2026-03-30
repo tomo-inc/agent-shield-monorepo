@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import subprocess
 import time
@@ -93,9 +94,20 @@ def run_checks(
     used_config_file: bool,
     strict: bool,
     run_dir: Path,
+    send_notifications: bool = True,
 ) -> tuple[RunReport, bool]:
     project_root = config.project_root
-    results = [run_single_check(check, project_root) for check in config.checks if check.enabled]
+    enabled_checks = [check for check in config.checks if check.enabled]
+    if enabled_checks:
+        max_workers = min(len(enabled_checks), 8)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(run_single_check, check, project_root)
+                for check in enabled_checks
+            ]
+            results = [future.result() for future in futures]
+    else:
+        results = []
     status = "pass" if all(result.status == "pass" for result in results) else "fail"
     report = RunReport(
         project_name=config.project.name,
@@ -107,5 +119,5 @@ def run_checks(
         checks=results,
     )
     report = write_run_report(report, run_dir)
-    webhook_sent = send_webhook(report, config.notify)
+    webhook_sent = send_webhook(report, config.notify) if send_notifications else False
     return report, webhook_sent
