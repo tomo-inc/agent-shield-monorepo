@@ -3,109 +3,211 @@ project:
   name: agent-shield-monorepo
   root: .
 checks:
-- id: apps-api-lint-api
-  label: apps/api - lint:api
+- id: apps-api-build
+  label: apps/api - build
+  module: apps/api
+  kind: build
+  argv:
+  - uv
+  - build
+  - .
+  cwd: apps/api
+  timeout_sec: 1200
+  enabled: true
+- id: apps-api-lint
+  label: apps/api - lint
+  module: apps/api
+  kind: lint
   argv:
   - uv
   - run
-  - --project
-  - apps/api
+  - --extra
+  - dev
   - ruff
   - check
-  - apps/api/app
-  - apps/api/tests
+  - app
+  - tests
+  cwd: apps/api
   timeout_sec: 1200
   enabled: true
-- id: apps-api-typecheck-api
-  label: apps/api - typecheck:api
+- id: apps-api-typecheck
+  label: apps/api - typecheck
+  module: apps/api
+  kind: typecheck
   argv:
   - uv
   - run
-  - --project
-  - apps/api
+  - --extra
+  - dev
   - pyright
-  - apps/api/app
-  - apps/api/tests
+  - app
+  - tests
+  cwd: apps/api
   timeout_sec: 1200
   enabled: true
-- id: apps-api-test-api
-  label: apps/api - test:api
+- id: apps-api-test
+  label: apps/api - test
+  module: apps/api
+  kind: test
   argv:
   - uv
   - run
-  - --project
-  - apps/api
+  - --extra
+  - dev
   - pytest
-  - apps/api/tests
+  - tests
+  cwd: apps/api
   timeout_sec: 1800
   enabled: true
-- id: apps-api-check-openapi
-  label: apps/api - check:openapi
+- id: apps-api-coverage
+  label: apps/api - coverage
+  module: apps/api
+  kind: coverage
   argv:
   - uv
   - run
-  - --project
-  - apps/api
-  - python
-  - scripts/export_openapi.py
-  - --check
-  timeout_sec: 600
-  enabled: true
-- id: apps-web-lint-web
-  label: apps/web - lint:web
-  argv:
-  - pnpm
-  - lint:web
-  timeout_sec: 1200
-  enabled: true
-- id: apps-web-typecheck-web
-  label: apps/web - typecheck:web
-  argv:
-  - pnpm
-  - typecheck:web
-  timeout_sec: 1200
-  enabled: true
-- id: apps-web-test-web
-  label: apps/web - test:web
-  argv:
-  - pnpm
-  - test:web
+  - --extra
+  - dev
+  - pytest
+  - --cov=app
+  - --cov-report=json:../../.qa-agent/generated/coverage/apps-api/coverage.json
+  - tests
+  cwd: apps/api
+  coverage_parser: coverage.py-json
+  coverage_file: ../../.qa-agent/generated/coverage/apps-api/coverage.json
   timeout_sec: 1800
   enabled: true
-- id: packages-cli-lint-cli
-  label: packages/cli - lint:cli
+- id: apps-web-build
+  label: apps/web - build
+  module: apps/web
+  kind: build
+  argv:
+  - pnpm
+  - build
+  cwd: apps/web
+  timeout_sec: 1200
+  enabled: true
+- id: apps-web-lint
+  label: apps/web - lint
+  module: apps/web
+  kind: lint
+  argv:
+  - pnpm
+  - lint
+  cwd: apps/web
+  timeout_sec: 1200
+  enabled: true
+- id: apps-web-typecheck
+  label: apps/web - typecheck
+  module: apps/web
+  kind: typecheck
+  argv:
+  - pnpm
+  - typecheck
+  cwd: apps/web
+  timeout_sec: 1200
+  enabled: true
+- id: apps-web-test
+  label: apps/web - test
+  module: apps/web
+  kind: test
+  argv:
+  - pnpm
+  - test
+  cwd: apps/web
+  timeout_sec: 1800
+  enabled: true
+- id: apps-web-coverage
+  label: apps/web - coverage
+  module: apps/web
+  kind: coverage
+  argv:
+  - pnpm
+  - exec
+  - vitest
+  - run
+  - --coverage.enabled=true
+  - --coverage.provider=v8
+  - --coverage.reporter=json-summary
+  - --coverage.reporter=text
+  - --coverage.reportsDirectory=../../.qa-agent/generated/coverage/apps-web
+  cwd: apps/web
+  coverage_parser: istanbul-summary
+  coverage_file: ../../.qa-agent/generated/coverage/apps-web/coverage-summary.json
+  timeout_sec: 1800
+  enabled: true
+- id: packages-cli-build
+  label: packages/cli - build
+  module: packages/cli
+  kind: build
+  argv:
+  - uv
+  - build
+  - .
+  cwd: packages/cli
+  timeout_sec: 1200
+  enabled: true
+- id: packages-cli-lint
+  label: packages/cli - lint
+  module: packages/cli
+  kind: lint
   argv:
   - uv
   - run
-  - --project
-  - packages/cli
+  - --extra
+  - dev
   - ruff
   - check
-  - packages/cli/agentshield_cli
-  - packages/cli/tests
+  - agentshield_cli
+  - tests
+  cwd: packages/cli
   timeout_sec: 1200
   enabled: true
-- id: packages-cli-typecheck-cli
-  label: packages/cli - typecheck:cli
+- id: packages-cli-typecheck
+  label: packages/cli - typecheck
+  module: packages/cli
+  kind: typecheck
   argv:
   - uv
   - run
-  - --project
-  - packages/cli
+  - --extra
+  - dev
   - pyright
-  - packages/cli/agentshield_cli
-  - packages/cli/tests
+  - agentshield_cli
+  - tests
+  cwd: packages/cli
   timeout_sec: 1200
   enabled: true
-- id: packages-cli-test-cli
-  label: packages/cli - test:cli
+- id: packages-cli-test
+  label: packages/cli - test
+  module: packages/cli
+  kind: test
   argv:
   - uv
   - run
-  - --project
-  - packages/cli
+  - --extra
+  - dev
   - pytest
-  - packages/cli/tests
+  - tests
+  cwd: packages/cli
+  timeout_sec: 1800
+  enabled: true
+- id: packages-cli-coverage
+  label: packages/cli - coverage
+  module: packages/cli
+  kind: coverage
+  argv:
+  - uv
+  - run
+  - --extra
+  - dev
+  - pytest
+  - --cov=agentshield_cli
+  - --cov-report=json:../../.qa-agent/generated/coverage/packages-cli/coverage.json
+  - tests
+  cwd: packages/cli
+  coverage_parser: coverage.py-json
+  coverage_file: ../../.qa-agent/generated/coverage/packages-cli/coverage.json
   timeout_sec: 1800
   enabled: true
 llm:

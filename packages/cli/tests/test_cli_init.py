@@ -57,3 +57,57 @@ def test_check_no_init_fails_without_config(monkeypatch, tmp_path: Path) -> None
     monkeypatch.chdir(tmp_path)
     exit_code = main(["check", "--no-init"])
     assert exit_code == 2
+
+
+def test_check_uses_interactive_init_when_tty(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    class _FakeStdin:
+        def isatty(self) -> bool:
+            return True
+
+    def fake_interactive_initialize_project(*, bootstrap_config, config_path, used_config_file):
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            "\n".join(
+                [
+                    "version: 1",
+                    "project:",
+                    "  name: demo",
+                    "  root: .",
+                    "checks:",
+                    "  - id: ok",
+                    "    label: apps/api - ok",
+                    "    module: apps/api",
+                    "    kind: test",
+                    "    argv:",
+                    "      - python",
+                    "      - -c",
+                    "      - print('ok')",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return (
+            AgentShieldConfig(
+                project=ProjectConfig(name="demo", root="."),
+                checks=[
+                    CheckConfig(
+                        id="ok",
+                        label="apps/api - ok",
+                        module="apps/api",
+                        kind="test",
+                        argv=["python", "-c", "print('ok')"],
+                    )
+                ],
+            ),
+            ScanReport(project_name="demo", project_type="python", summary="demo"),
+        )
+
+    monkeypatch.setattr("agentshield_cli.cli._interactive_initialize_project", fake_interactive_initialize_project)
+    monkeypatch.setattr("agentshield_cli.cli.sys.stdin", _FakeStdin())
+
+    exit_code = main(["check", "--strict"])
+
+    assert exit_code == 0
+    assert (tmp_path / ".agentshield" / "config.yaml").exists()

@@ -28,12 +28,25 @@ def _baseline_checks(checks: list[CheckResult]) -> list[BaselineCheck]:
         BaselineCheck(
             id=check.id,
             label=check.label,
+            module=check.module,
+            kind=check.kind,
             command=check.command,
             status=check.status,
             exit_code=check.exit_code,
+            metrics=check.metrics,
         )
         for check in checks
     ]
+
+
+def _coverage_thresholds(checks: list[CheckResult]) -> dict[str, float]:
+    thresholds: dict[str, float] = {}
+    for check in checks:
+        if check.kind != "coverage":
+            continue
+        for metric, value in check.metrics.items():
+            thresholds[metric] = value
+    return thresholds
 
 
 def build_baseline_record(report: RunReport, module: str, checks: list[CheckResult]) -> BaselineRecord:
@@ -41,6 +54,7 @@ def build_baseline_record(report: RunReport, module: str, checks: list[CheckResu
         module=module,
         source_created_at=report.created_at,
         source_run_file=report.run_file,
+        thresholds=_coverage_thresholds(checks),
         checks=_baseline_checks(checks),
     )
 
@@ -92,13 +106,41 @@ def summarize_baseline(record: BaselineRecord | None) -> dict[str, int | str] | 
         CheckResult(
             id=check.id,
             label=check.label,
+            module=check.module,
+            kind=check.kind,
             command=check.command,
             status=check.status,
             exit_code=check.exit_code,
             duration_sec=0.0,
+            metrics=check.metrics,
             stdout_tail=[],
             stderr_tail=[],
         )
         for check in record.checks
     ]
     return summarize_checks(checks)
+
+
+def apply_baseline_gates(report: RunReport, baseline_dir: Path) -> RunReport:
+    grouped = group_checks_by_module(report)
+    for module, checks in grouped.items():
+        baseline = load_baseline(module, baseline_dir)
+        if baseline is None or not baseline.thresholds:
+            continue
+        for check in checks:
+            if check.kind != "coverage":
+                continue
+            for metric, value in check.metrics.items():
+                threshold = baseline.thresholds.get(metric)
+                if threshold is None:
+                    continue
+                check.gate_target = threshold
+                if value + 1e-9 < threshold:
+                    check.status = "fail"
+                    message = (
+                        f"coverage {metric} {value:.1f}% below gate >= {threshold:.1f}%"
+                    )
+                    if message not in check.stderr_tail:
+                        check.stderr_tail.append(message)
+    report.status = "pass" if all(check.status == "pass" for check in report.checks) else "fail"
+    return report

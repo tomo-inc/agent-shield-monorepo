@@ -1,0 +1,63 @@
+{
+  "module": "packages/cli",
+  "created_at": "2026-03-30T06:36:03.903064+00:00",
+  "source_created_at": "2026-03-30T06:36:03.900553+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T06-36-03.900553+00-00.json",
+  "thresholds": {
+    "line": 69.4
+  },
+  "checks": [
+    {
+      "id": "packages-cli-build",
+      "label": "packages/cli - build",
+      "module": "packages/cli",
+      "kind": "build",
+      "command": "uv build .",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cli-lint",
+      "label": "packages/cli - lint",
+      "module": "packages/cli",
+      "kind": "lint",
+      "command": "uv run --extra dev ruff check agentshield_cli tests",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cli-typecheck",
+      "label": "packages/cli - typecheck",
+      "module": "packages/cli",
+      "kind": "typecheck",
+      "command": "uv run --extra dev pyright agentshield_cli tests",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cli-test",
+      "label": "packages/cli - test",
+      "module": "packages/cli",
+      "kind": "test",
+      "command": "uv run --extra dev pytest tests",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cli-coverage",
+      "label": "packages/cli - coverage",
+      "module": "packages/cli",
+      "kind": "coverage",
+      "command": "uv run --extra dev pytest --cov=agentshield_cli --cov-report=json:../../.qa-agent/generated/coverage/packages-cli/coverage.json tests",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {
+        "line": 69.4
+      }
+    }
+  ]
+}
