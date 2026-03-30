@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from http.client import HTTPMessage
 from pathlib import Path
+from typing import Any, cast
 from urllib import error
 
 from agentshield_cli.baseline import write_baseline
@@ -186,7 +188,7 @@ def test_build_run_upload_payload_omits_untrusted_fields(tmp_path: Path) -> None
     assert payload["source"] is None
     assert payload["started_at"] is None
     assert payload["duration_sec"] is None
-    module_payload = payload["modules"][0]
+    module_payload = cast(list[dict[str, Any]], payload["modules"])[0]
     assert module_payload["status"] == "fail"
     assert module_payload["coverage_pct"] == 80.0
     assert module_payload["baseline_pct"] == 88.0
@@ -215,7 +217,7 @@ def test_sync_run_does_not_raise_on_http_error(monkeypatch, tmp_path: Path, caps
             req.full_url,
             404,
             "not found",
-            hdrs=None,
+            hdrs=HTTPMessage(),
             fp=None,
         )
 
@@ -340,7 +342,7 @@ def test_build_run_upload_payload_uses_label_when_module_missing(tmp_path: Path)
 
     payload = build_run_upload_payload(config, report, baseline_dir=tmp_path / ".agentshield" / "baselines")
 
-    module_payload = payload["modules"][0]
+    module_payload = cast(list[dict[str, Any]], payload["modules"])[0]
     assert module_payload["module_name"] == "apps/api"
     assert module_payload["status"] == "pass"
     assert module_payload["checker_results"][0]["detail"] == "ok"
@@ -373,4 +375,4 @@ def test_build_run_upload_payload_marks_timeout_module(tmp_path: Path) -> None:
 
     payload = build_run_upload_payload(config, report, baseline_dir=tmp_path / ".agentshield" / "baselines")
 
-    assert payload["modules"][0]["status"] == "timeout"
+    assert cast(list[dict[str, Any]], payload["modules"])[0]["status"] == "timeout"
