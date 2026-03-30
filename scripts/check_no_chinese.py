@@ -17,6 +17,7 @@ EXCLUDE_DIRS = {
     ".qa-agent",
     "dist",
     "coverage",
+    "zh-CN",
 }
 
 
