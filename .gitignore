@@ -10,11 +10,19 @@ apps/web/tsconfig.tsbuildinfo
 .venv/
 __pycache__/
 .pytest_cache/
+.coverage
+.coverage.*
 .ruff_cache/
 .pyright/
 
 .qa-agent/generated/
+.qa-agent/runs/
+.qa-agent/scans/
+.agentshield/.env.local
 
 *.pyc
 *.pyo
 *.pyd
+
+# Keep Chinese docs local-only.
+docs/**/*.zh-CN.md

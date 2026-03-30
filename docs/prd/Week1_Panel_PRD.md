@@ -217,8 +217,8 @@ Recommended minimum tables:
 | `triggered_by` | Trigger user or system |
 | `started_at` | Run start time |
 | `finished_at` | Run finish time |
+| `duration_sec` | Total execution duration |
 | `status` | Aggregated project result |
-| `modules` | Array of module result objects |
 | `block_reason` | Block reason, nullable |
 | `strict_mode` | Whether CI-blocking mode was enabled |
 | `created_at` | Record creation time |
@@ -232,29 +232,40 @@ Recommended minimum tables:
 | `module_name` | Module path, e.g. `apps/api` |
 | `stack` | Detected stack summary |
 | `language` | Language or stack label |
-| `status` | Aggregated module result |
-| `coverage_pct` | Current line coverage |
-| `baseline_pct` | Baseline line coverage |
-| `coverage_gate_pct` | Derived gate threshold |
-| `coverage_delta_pct` | Difference vs baseline |
-| `coverage_parser` | Parser used to read coverage data |
-| `block_reason` | Module-specific blocking reason |
 | `updated_at` | Last sync time |
 
-### 6.4 `panel_checker_results`
+### 6.4 `panel_run_modules`
 
 | Field | Description |
 |---|---|
 | `id` | Primary key |
 | `run_id` | Foreign key to `panel_runs.id` |
 | `module_id` | Foreign key to `panel_modules.id` |
+| `stack` | Runtime stack summary |
+| `language` | Runtime language or stack label |
+| `status` | Aggregated module result for this run |
+| `coverage_pct` | Current line coverage |
+| `baseline_pct` | Baseline line coverage echoed in this run |
+| `coverage_gate_pct` | Derived gate threshold |
+| `coverage_delta_pct` | Difference vs baseline |
+| `coverage_parser` | Parser used to read coverage data |
+| `block_reason` | Module-specific blocking reason |
+| `updated_at` | Last sync time |
+
+### 6.5 `panel_checker_results`
+
+| Field | Description |
+|---|---|
+| `id` | Primary key |
+| `run_id` | Foreign key to `panel_runs.id` |
+| `run_module_id` | Foreign key to `panel_run_modules.id` |
 | `checker` | `build / lint / typecheck / test / coverage` |
 | `status` | `pass / fail / timeout / skip` |
 | `detail` | Checker detail text |
 | `duration_sec` | Execution duration |
 | `created_at` | Record creation time |
 
-### 6.5 `panel_baselines`
+### 6.6 `panel_baselines`
 
 | Field | Description |
 |---|---|
@@ -269,8 +280,10 @@ Requirements:
 - Query performance only needs to cover Week 1 latest-status display
 - Keep raw run records for audit and for `agentshield report`
 - If a project has no run record yet, return `check result = not-run`, `health = unknown`
-- DB sync is idempotent by `project_key`, `run_key`, and `(project_id, module_name, checker, run_id)` uniqueness
+- DB sync is idempotent by `project_key`, `run_key`, `(project_id, module_name)`, `(run_id, module_id)`, and `(run_module_id, checker)` uniqueness
 - Baseline data is stored separately per module and joined at read time or denormalized into run summaries
+- Project detail and latest-run module cards should read per-run status fields from `panel_run_modules`
+- Stable module identity and discovery metadata should read from `panel_modules`
 
 ## 7. Aggregated Response
 

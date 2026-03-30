@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(pnpm dev:web)",
+      "Bash(find /Users/daweima/file/tomo/agent-shield-monorepo -type f -name *.tsx)",
+      "Bash(python -:*)"
+    ]
+  }
+}

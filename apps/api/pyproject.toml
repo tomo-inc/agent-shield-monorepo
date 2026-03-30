@@ -12,8 +12,11 @@ description = "FastAPI backend for AgentShield QA automation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "alembic>=1.16,<2.0",
   "fastapi>=0.115,<1.0",
   "pydantic>=2.10,<3.0",
+  "psycopg[binary]>=3.2,<4.0",
+  "sqlalchemy>=2.0.41,<3.0",
   "uvicorn>=0.34,<1.0"
 ]
 
@@ -21,6 +24,7 @@ dependencies = [
 dev = [
   "httpx>=0.28,<1.0",
   "pytest>=8.3,<9.0",
+  "pytest-cov>=6.1,<7.0",
   "pyright>=1.1.396,<2.0",
   "pyyaml>=6.0,<7.0",
   "ruff>=0.11,<1.0"
