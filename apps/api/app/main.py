@@ -2,6 +2,7 @@ from typing import Final
 
 from fastapi import FastAPI
 
+from app.api.routes.panel import router as panel_router
 from app.schemas.qa import Capability, CapabilityCatalog, HealthResponse
 
 APP_TITLE: Final[str] = "AgentShield QA Automation API"
@@ -73,3 +74,6 @@ def healthz() -> HealthResponse:
 )
 def list_capabilities() -> CapabilityCatalog:
     return _CAPABILITIES_CATALOG
+
+
+app.include_router(panel_router)

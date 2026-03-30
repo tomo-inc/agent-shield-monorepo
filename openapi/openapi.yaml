@@ -32,6 +32,146 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CapabilityCatalog'
+  /api/v1/panel/projects/register:
+    post:
+      tags:
+      - panel
+      summary: Register or update a panel project
+      operationId: registerPanelProject
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelProjectRegisterRequest'
+        required: true
+      responses:
+        '200':
+          description: Project registration result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectRegisterResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/panel/baselines:
+    post:
+      tags:
+      - panel
+      summary: Upload panel baseline snapshots
+      operationId: uploadPanelBaselines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelBaselineUploadRequest'
+        required: true
+      responses:
+        '200':
+          description: Baseline upload result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelBaselineUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/panel/runs:
+    post:
+      tags:
+      - panel
+      summary: Upload a panel run payload
+      operationId: uploadPanelRun
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PanelRunUploadRequest'
+        required: true
+      responses:
+        '200':
+          description: Run upload result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelRunUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/panel/projects:
+    get:
+      tags:
+      - panel
+      summary: List panel project overview rows
+      operationId: listPanelProjects
+      responses:
+        '200':
+          description: Project overview response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectOverviewResponse'
+  /api/v1/panel/projects/{project_key}:
+    get:
+      tags:
+      - panel
+      summary: Get panel project detail
+      operationId: getPanelProjectDetail
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Project Key
+      responses:
+        '200':
+          description: Project detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectDetailResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/panel/projects/{project_key}/latest:
+    get:
+      tags:
+      - panel
+      summary: Get latest panel run detail
+      operationId: getPanelProjectLatestRun
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Project Key
+      responses:
+        '200':
+          description: Latest run detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelLatestRunResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     Capability:
@@ -88,6 +228,15 @@ components:
       - required_files
       - capabilities
       title: CapabilityCatalog
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
     HealthResponse:
       properties:
         status:
@@ -112,3 +261,786 @@ components:
       - service
       - active_focus
       title: HealthResponse
+    PanelBaselineModule:
+      properties:
+        module_name:
+          type: string
+          title: Module Name
+          description: Module path, such as apps/api
+        baseline_pct:
+          type: number
+          title: Baseline Pct
+          description: Effective baseline coverage percentage
+      type: object
+      required:
+      - module_name
+      - baseline_pct
+      title: PanelBaselineModule
+    PanelBaselineUploadRequest:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Stable project identifier
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+          description: Baseline update timestamp
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelBaselineModule'
+          type: array
+          title: Modules
+          description: Baseline rows to upload
+      type: object
+      required:
+      - project_key
+      - updated_at
+      - modules
+      title: PanelBaselineUploadRequest
+    PanelBaselineUploadResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+          description: Whether the request succeeded
+        project_id:
+          type: integer
+          title: Project Id
+          description: Resolved project id
+        baselines_upserted:
+          type: integer
+          title: Baselines Upserted
+          description: Number of baseline rows upserted
+      type: object
+      required:
+      - ok
+      - project_id
+      - baselines_upserted
+      title: PanelBaselineUploadResponse
+    PanelCheckerResult:
+      properties:
+        checker:
+          type: string
+          enum:
+          - build
+          - lint
+          - typecheck
+          - test
+          - coverage
+          title: Checker
+          description: Checker name
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - skip
+          title: Status
+          description: Checker execution status
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detail
+          description: Checker output summary
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Checker duration in seconds
+      type: object
+      required:
+      - checker
+      - status
+      title: PanelCheckerResult
+    PanelLatestRun:
+      properties:
+        run_key:
+          type: string
+          title: Run Key
+          description: Run identifier
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: Run source
+        git_ref:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Ref
+          description: Branch or tag
+        git_sha:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Sha
+          description: Commit SHA
+        triggered_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Triggered By
+          description: Trigger user or system
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+          description: Run start timestamp
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+          description: Run finish timestamp
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Total duration
+        strict_mode:
+          type: boolean
+          title: Strict Mode
+          description: Whether strict mode was enabled
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Project-level run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Project-level blocking reason
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+          type: array
+          title: Modules
+          description: Per-module run snapshots
+      type: object
+      required:
+      - run_key
+      - strict_mode
+      - status
+      - modules
+      title: PanelLatestRun
+    PanelLatestRunRef:
+      properties:
+        run_key:
+          type: string
+          title: Run Key
+          description: Run identifier
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Project-level run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Project-level blocking reason
+        finished_at:
+          type: string
+          format: date-time
+          title: Finished At
+          description: Run finish timestamp
+      type: object
+      required:
+      - run_key
+      - status
+      - finished_at
+      title: PanelLatestRunRef
+    PanelLatestRunResponse:
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: Response generation time
+        run:
+          $ref: '#/components/schemas/PanelLatestRun'
+          description: Latest run payload
+      type: object
+      required:
+      - generated_at
+      - run
+      title: PanelLatestRunResponse
+    PanelOverviewProject:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Stable project identifier
+        project_name:
+          type: string
+          title: Project Name
+          description: Display name
+        preset:
+          type: string
+          title: Preset
+          description: CLI resolved preset
+        module_count:
+          type: integer
+          title: Module Count
+          description: Number of modules under the project
+        onboarding_status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - blocked
+          - custom-needed
+          title: Onboarding Status
+          description: Current onboarding state
+        health:
+          type: string
+          enum:
+          - healthy
+          - warning
+          - failing
+          - unknown
+          title: Health
+          description: Derived project health
+        check_all:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Check All
+          description: Derived latest project status
+        last_run_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Run At
+          description: Latest synchronized run time
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Latest synchronized block reason
+      type: object
+      required:
+      - project_key
+      - project_name
+      - preset
+      - module_count
+      - onboarding_status
+      - health
+      - check_all
+      title: PanelOverviewProject
+    PanelProjectCommands:
+      properties:
+        build:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Build
+          description: Build command
+        lint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Lint
+          description: Lint command
+        typecheck:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Typecheck
+          description: Typecheck command
+        test:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Test
+          description: Test command
+        coverage:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Coverage
+          description: Coverage command
+      type: object
+      title: PanelProjectCommands
+    PanelProjectDetail:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Stable project identifier
+        project_name:
+          type: string
+          title: Project Name
+          description: Display name
+        preset:
+          type: string
+          title: Preset
+          description: CLI resolved preset
+        onboarding_status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - blocked
+          - custom-needed
+          title: Onboarding Status
+          description: Current onboarding state
+        latest_run:
+          anyOf:
+          - $ref: '#/components/schemas/PanelLatestRunRef'
+          - type: 'null'
+          description: Latest run summary
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+          type: array
+          title: Modules
+          description: Latest run module cards
+      type: object
+      required:
+      - project_key
+      - project_name
+      - preset
+      - onboarding_status
+      - modules
+      title: PanelProjectDetail
+    PanelProjectDetailResponse:
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: Response generation time
+        project:
+          $ref: '#/components/schemas/PanelProjectDetail'
+          description: Project detail payload
+      type: object
+      required:
+      - generated_at
+      - project
+      title: PanelProjectDetailResponse
+    PanelProjectModule:
+      properties:
+        module_name:
+          type: string
+          title: Module Name
+          description: Module path, such as apps/api
+        stack:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stack
+          description: Detected stack summary
+        language:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Language
+          description: Primary language label
+      type: object
+      required:
+      - module_name
+      title: PanelProjectModule
+    PanelProjectNotify:
+      properties:
+        feishu_webhook:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Feishu Webhook
+          description: Feishu webhook URL
+      type: object
+      title: PanelProjectNotify
+    PanelProjectOverviewResponse:
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+          description: Response generation time
+        projects:
+          items:
+            $ref: '#/components/schemas/PanelOverviewProject'
+          type: array
+          title: Projects
+          description: Overview rows
+      type: object
+      required:
+      - generated_at
+      - projects
+      title: PanelProjectOverviewResponse
+    PanelProjectRegisterRequest:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Stable project identifier
+        project_name:
+          type: string
+          title: Project Name
+          description: Display name
+        repo_path:
+          type: string
+          title: Repo Path
+          description: Repository path
+        preset:
+          type: string
+          title: Preset
+          description: CLI resolved preset
+        onboarding_status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - blocked
+          - custom-needed
+          title: Onboarding Status
+          description: Current onboarding state
+        commands:
+          anyOf:
+          - $ref: '#/components/schemas/PanelProjectCommands'
+          - type: 'null'
+          description: Project-level commands
+        thresholds:
+          anyOf:
+          - $ref: '#/components/schemas/PanelProjectThresholds'
+          - type: 'null'
+          description: Threshold configuration
+        timeouts:
+          anyOf:
+          - $ref: '#/components/schemas/PanelProjectTimeouts'
+          - type: 'null'
+          description: Timeout configuration
+        notify:
+          anyOf:
+          - $ref: '#/components/schemas/PanelProjectNotify'
+          - type: 'null'
+          description: Notification configuration
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelProjectModule'
+          type: array
+          title: Modules
+          description: Detected module list
+      type: object
+      required:
+      - project_key
+      - project_name
+      - repo_path
+      - preset
+      - onboarding_status
+      - modules
+      title: PanelProjectRegisterRequest
+    PanelProjectRegisterResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+          description: Whether the request succeeded
+        project_id:
+          type: integer
+          title: Project Id
+          description: Resolved project id
+        module_count:
+          type: integer
+          title: Module Count
+          description: Number of modules upserted
+      type: object
+      required:
+      - ok
+      - project_id
+      - module_count
+      title: PanelProjectRegisterResponse
+    PanelProjectThresholds:
+      properties:
+        coverage_tolerance_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Tolerance Pct
+          description: Coverage tolerance percentage
+        coverage_floor_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Floor Pct
+          description: Coverage floor percentage
+        lint_max_errors:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Lint Max Errors
+          description: Maximum lint errors
+        typecheck_max_errors:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Typecheck Max Errors
+          description: Maximum typecheck errors
+      type: object
+      title: PanelProjectThresholds
+    PanelProjectTimeouts:
+      properties:
+        build:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Build
+          description: Build timeout in seconds
+        test:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Test
+          description: Test timeout in seconds
+      type: object
+      title: PanelProjectTimeouts
+    PanelRunModule:
+      properties:
+        module_name:
+          type: string
+          title: Module Name
+          description: Module path, such as apps/api
+        stack:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stack
+          description: Runtime stack summary
+        language:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Language
+          description: Runtime language label
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Module status for this run
+        coverage_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Pct
+          description: Current line coverage
+        baseline_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Baseline Pct
+          description: Baseline echoed in this run
+        coverage_gate_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Gate Pct
+          description: Coverage gate threshold
+        coverage_delta_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Delta Pct
+          description: Coverage delta versus baseline
+        coverage_parser:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Coverage Parser
+          description: Coverage parser type
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Module blocking reason
+        checker_results:
+          items:
+            $ref: '#/components/schemas/PanelCheckerResult'
+          type: array
+          title: Checker Results
+          description: Checker result list
+      type: object
+      required:
+      - module_name
+      - status
+      - checker_results
+      title: PanelRunModule
+    PanelRunUploadRequest:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Stable project identifier
+        run_key:
+          type: string
+          title: Run Key
+          description: Idempotent run identifier
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: Run source
+        git_ref:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Ref
+          description: Branch or tag
+        git_sha:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Sha
+          description: Commit SHA
+        triggered_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Triggered By
+          description: Trigger user or system
+        started_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Started At
+          description: Run start timestamp
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Finished At
+          description: Run finish timestamp
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Total duration
+        strict_mode:
+          type: boolean
+          title: Strict Mode
+          description: Whether strict mode was enabled
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Project-level run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Project-level blocking reason
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelRunModule'
+          type: array
+          title: Modules
+          description: Per-module run snapshots
+      type: object
+      required:
+      - project_key
+      - run_key
+      - strict_mode
+      - status
+      - modules
+      title: PanelRunUploadRequest
+    PanelRunUploadResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+          description: Whether the request succeeded
+        project_id:
+          type: integer
+          title: Project Id
+          description: Resolved project id
+        run_id:
+          type: integer
+          title: Run Id
+          description: Resolved run id
+        modules_upserted:
+          type: integer
+          title: Modules Upserted
+          description: Number of run modules upserted
+        checker_results_upserted:
+          type: integer
+          title: Checker Results Upserted
+          description: Number of checker rows upserted
+      type: object
+      required:
+      - ok
+      - project_id
+      - run_id
+      - modules_upserted
+      - checker_results_upserted
+      title: PanelRunUploadResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
