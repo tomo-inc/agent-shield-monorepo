@@ -231,6 +231,7 @@ def run_checks(
     progress_callback: Callable[[CheckResult], None] | None = None,
 ) -> tuple[RunReport, bool]:
     project_root = config.project_root
+    grouped_all_checks = _group_checks_by_module(config.checks)
     enabled_checks = [check for check in config.checks if check.enabled]
     if enabled_checks:
         grouped_checks = _group_checks_by_module(enabled_checks)
@@ -247,7 +248,7 @@ def run_checks(
             }
             results = []
             for module_name, future in futures.items():
-                module_checks = grouped_checks[module_name]
+                module_checks = grouped_all_checks.get(module_name, grouped_checks[module_name])
                 results.extend(future.result())
                 missing_results = _missing_required_results(module_name, module_checks)
                 results.extend(missing_results)

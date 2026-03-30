@@ -176,6 +176,28 @@ def test_run_checks_fails_when_required_checks_are_missing(tmp_path: Path) -> No
     ]
 
 
+def test_run_checks_allows_disabled_required_check_without_missing_failure(tmp_path: Path) -> None:
+    checks = _passing_module_checks()
+    checks[-1] = checks[-1].model_copy(update={"enabled": False})
+    config = AgentShieldConfig(
+        project=ProjectConfig(name="demo", root=str(tmp_path)),
+        checks=checks,
+        notify=NotifyConfig(enabled=False),
+    )
+
+    report, _ = run_checks(
+        config,
+        config_path=Path(".agentshield/config.yaml"),
+        used_config_file=True,
+        strict=True,
+        run_dir=tmp_path / ".qa-agent" / "runs",
+    )
+
+    assert report.status == "pass"
+    assert not any(check.command == "(missing configuration)" for check in report.checks)
+    assert {check.kind for check in report.checks} == {"build", "lint", "typecheck", "test"}
+
+
 def test_run_checks_emits_progress_for_each_result(tmp_path: Path) -> None:
     progress: list[str] = []
     config = AgentShieldConfig(
