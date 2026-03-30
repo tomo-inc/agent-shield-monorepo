@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "local-panel-db",
+      "Group": "AgentShield",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "agentshield_panel_dev",
+      "Username": "agentshield",
+      "PassFile": "/pgpass",
+      "SSLMode": "prefer"
+    }
+  }
+}
