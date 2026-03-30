@@ -7,11 +7,21 @@ from pathlib import Path
 
 from agentshield_cli.analyzer.ai_client import ScanAPIError, run_scan
 from agentshield_cli.analyzer.scanner import collect_repo_snapshot
+from agentshield_cli.baseline import (
+    ensure_initial_baselines,
+    load_baseline,
+    summarize_baseline,
+    update_baselines,
+)
 from agentshield_cli.bootstrap import initialize_project
 from agentshield_cli.config import load_config
+from agentshield_cli.history import group_checks_by_module, list_run_reports, latest_run_report, summarize_checks
 from agentshield_cli.llm import resolve_llm_settings
 from agentshield_cli.models import ScanReport
 from agentshield_cli.runner import run_checks
+
+BASELINE_DIR = Path(".agentshield/baselines")
+RUN_DIR = Path(".qa-agent/runs")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Fail when `.agentshield/config.yaml` is missing instead of auto-initializing",
     )
+    check_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run checks without writing baselines or sending notifications",
+    )
 
     init_parser = subparsers.add_parser("init", help="Initialize AgentShield config for the current repo")
     init_parser.add_argument(
@@ -48,13 +63,46 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run non-interactively and accept analyzer results",
     )
+
+    baseline_parser = subparsers.add_parser("baseline", help="Manage AgentShield baselines")
+    baseline_subparsers = baseline_parser.add_subparsers(dest="baseline_command", required=True)
+    baseline_update_parser = baseline_subparsers.add_parser(
+        "update",
+        help="Update baselines from the latest AgentShield run",
+    )
+    baseline_update_parser.add_argument(
+        "--module",
+        help="Update only the specified module path, for example `apps/api`",
+    )
+
+    report_parser = subparsers.add_parser("report", help="Show AgentShield run history")
+    report_parser.add_argument(
+        "--last",
+        type=int,
+        default=1,
+        help="Show the most recent N runs",
+    )
+    report_parser.add_argument(
+        "--module",
+        help="Show only one module path, for example `apps/api`",
+    )
     return parser
 
 
-def _print_summary(report_path: Path, used_config_file: bool, webhook_sent: bool) -> None:
+def _print_summary(
+    report_path: Path,
+    used_config_file: bool,
+    webhook_sent: bool,
+    *,
+    dry_run: bool,
+    initialized_baselines: list[Path],
+) -> None:
     print("AgentShield Clean · Mode 1")
     print(f"Config source: {'file' if used_config_file else 'built-in default'}")
     print(f"Run record: {report_path}")
+    print(f"Dry run: {'yes' if dry_run else 'no'}")
+    if initialized_baselines:
+        print(f"Baselines initialized: {len(initialized_baselines)}")
     print(f"Webhook: {'sent' if webhook_sent else 'skipped'}")
 
 
@@ -118,6 +166,114 @@ def _print_init_summary(config_path: Path, report: ScanReport) -> None:
             f"- {module.path}  {module.language}  "
             f"confidence={module.confidence:.2f}  checks={len(module.recommended_checks)}"
         )
+
+
+def _confirm(prompt: str) -> bool:
+    try:
+        value = input(f"{prompt} [y/N]: ").strip().lower()
+    except EOFError:
+        return False
+    return value in {"y", "yes"}
+
+
+def _print_baseline_preview(module: str, current_summary, latest_summary, current_record) -> None:
+    print(f"- {module}")
+    if current_record is None or current_summary is None:
+        print("  Current baseline: none")
+    else:
+        print(
+            "  Current baseline: "
+            f"{current_record.source_created_at}  "
+            f"pass={current_summary['passed']}/{current_summary['total']}  "
+            f"fail={current_summary['failed']}"
+        )
+    print(
+        "  Latest run: "
+        f"pass={latest_summary['passed']}/{latest_summary['total']}  "
+        f"fail={latest_summary['failed']}  "
+        f"status={str(latest_summary['status']).upper()}"
+    )
+
+
+def _handle_baseline_update(module_filter: str | None) -> int:
+    try:
+        report, _ = latest_run_report(RUN_DIR)
+    except FileNotFoundError as exc:
+        print(str(exc))
+        return 2
+
+    grouped = group_checks_by_module(report)
+    modules = [module_filter] if module_filter else list(grouped.keys())
+    if module_filter and module_filter not in grouped:
+        print(f"Module `{module_filter}` was not present in the latest run.")
+        return 2
+
+    print("AgentShield Baseline Update")
+    print(f"Source run: {report.run_file}")
+    for module in modules:
+        current_record = load_baseline(module, BASELINE_DIR)
+        current_summary = summarize_baseline(current_record)
+        latest_summary = summarize_checks(grouped[module])
+        _print_baseline_preview(module, current_summary, latest_summary, current_record)
+
+    prompt = f"Confirm update {module_filter}" if module_filter else "Confirm update all modules"
+    if not _confirm(prompt):
+        print("Baseline update cancelled.")
+        return 1
+
+    written_paths = update_baselines(
+        report,
+        baseline_dir=BASELINE_DIR,
+        module_filter=module_filter,
+    )
+    print("Baseline updated successfully")
+    for path in written_paths:
+        print(f"- {path}")
+    return 0
+
+
+def _print_report_history(last: int, module_filter: str | None) -> int:
+    if last <= 0:
+        print("`--last` must be greater than 0.")
+        return 2
+
+    runs = list_run_reports(RUN_DIR, last)
+    if not runs:
+        print(f"No AgentShield run history found in `{RUN_DIR}`.")
+        return 2
+
+    print("AgentShield Report")
+    print(f"Runs shown: {len(runs)}")
+    if module_filter:
+        print(f"Module filter: {module_filter}")
+
+    for report, path in runs:
+        print(f"- {report.created_at}  {report.status.upper()}  {path.name}")
+        grouped = group_checks_by_module(report)
+        if module_filter:
+            checks = grouped.get(module_filter)
+            if checks is None:
+                print("  module: not present in this run")
+                continue
+            summary = summarize_checks(checks)
+            print(
+                "  "
+                f"pass={summary['passed']}/{summary['total']}  "
+                f"fail={summary['failed']}"
+            )
+            for check in checks:
+                print(f"  {check.id}: {check.status.upper()}")
+            continue
+
+        for module, checks in grouped.items():
+            summary = summarize_checks(checks)
+            print(
+                "  "
+                f"{module}: {str(summary['status']).upper()}  "
+                f"pass={summary['passed']}/{summary['total']}  "
+                f"fail={summary['failed']}"
+            )
+    return 0
 
 
 def _build_internal_scan_parser() -> argparse.ArgumentParser:
@@ -184,6 +340,14 @@ def main(argv: list[str] | None = None) -> int:
         _print_init_summary(config_path, report)
         return 0
 
+    if args.command == "baseline":
+        if args.baseline_command != "update":
+            parser.error("unsupported baseline command")
+        return _handle_baseline_update(args.module)
+
+    if args.command == "report":
+        return _print_report_history(args.last, args.module)
+
     if args.command != "check":
         parser.error("unsupported command")
 
@@ -220,9 +384,17 @@ def main(argv: list[str] | None = None) -> int:
         config_path=config_path,
         used_config_file=used_config_file,
         strict=args.strict,
-        run_dir=Path(".qa-agent/runs"),
+        run_dir=RUN_DIR,
+        send_notifications=not args.dry_run,
     )
-    _print_summary(Path(report.run_file), used_config_file, webhook_sent)
+    initialized_baselines = [] if args.dry_run else ensure_initial_baselines(report, BASELINE_DIR)
+    _print_summary(
+        Path(report.run_file),
+        used_config_file,
+        webhook_sent,
+        dry_run=args.dry_run,
+        initialized_baselines=initialized_baselines,
+    )
     _print_report(report)
 
     if args.strict and report.status != "pass":
