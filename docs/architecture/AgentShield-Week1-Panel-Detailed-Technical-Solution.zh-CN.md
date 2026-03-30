@@ -148,7 +148,7 @@ Module 1 --- 1 Baseline
 | 字段 | 类型 | 含义 |
 |---|---|---|
 | `id` | integer PK | 主键 |
-| `project_key` | text unique | 项目唯一标识，推荐使用 `project.name` |
+| `project_key` | text unique | 项目唯一标识，推荐使用 `project.name`,CI阶段init初始化key，repo唯一，本地运行不上报中心化panel |
 | `project_name` | text | 展示名称 |
 | `repo_path` | text | 仓库路径 |
 | `preset` | text | CLI 识别的 preset |
