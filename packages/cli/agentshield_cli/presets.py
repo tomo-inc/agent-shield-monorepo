@@ -206,27 +206,6 @@ def _python_cli_checks(module_path: str) -> list[CheckConfig]:
     ]
 
 
-def _fallback_checks(module: ScanModuleSuggestion) -> list[CheckConfig]:
-    module_path = module.path or module.name or "."
-    checks: list[CheckConfig] = []
-    for suggestion in module.recommended_checks:
-        argv = suggestion.resolved_argv()
-        if not argv:
-            continue
-        checks.append(
-            CheckConfig(
-                id=_check_id(module_path, suggestion.id),
-                label=f"{module_path} - {suggestion.id}",
-                module=module_path,
-                kind="custom",
-                argv=argv,
-                cwd=suggestion.cwd,
-                timeout_sec=1800 if "test" in suggestion.id.lower() else 1200,
-            )
-        )
-    return checks
-
-
 def build_preset_checks(module: ScanModuleSuggestion, project_root: Path) -> list[CheckConfig]:
     del project_root
     module_path = module.path or module.name or "."
@@ -237,4 +216,4 @@ def build_preset_checks(module: ScanModuleSuggestion, project_root: Path) -> lis
         return _nextjs_web_checks(module_path)
     if key == "python-cli":
         return _python_cli_checks(module_path)
-    return _fallback_checks(module)
+    return []

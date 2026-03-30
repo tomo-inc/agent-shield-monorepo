@@ -4,6 +4,7 @@ import argparse
 import json
 import shlex
 import sys
+import threading
 from pathlib import Path
 
 from agentshield_cli.analyzer.ai_client import ScanAPIError, run_scan
@@ -14,12 +15,18 @@ from agentshield_cli.baseline import (
     summarize_baseline,
     update_baselines,
 )
-from agentshield_cli.bootstrap import build_config_payload, initialize_project, write_generated_config
+from agentshield_cli.bootstrap import (
+    build_checks_from_scan_module,
+    build_config_payload,
+    initialize_project,
+    normalize_scan_report,
+    reviewable_modules,
+    write_generated_config,
+)
 from agentshield_cli.config import AgentShieldConfig, CheckConfig, load_config
 from agentshield_cli.history import group_checks_by_module, list_run_reports, latest_run_report, summarize_checks
 from agentshield_cli.llm import resolve_llm_settings
-from agentshield_cli.models import ScanModuleSuggestion, ScanReport
-from agentshield_cli.presets import build_preset_checks
+from agentshield_cli.models import CheckResult, ScanModuleSuggestion, ScanReport
 from agentshield_cli.runner import run_checks
 
 BASELINE_DIR = Path(".agentshield/baselines")
@@ -108,6 +115,42 @@ def _print_summary(
     print(f"Webhook: {'sent' if webhook_sent else 'skipped'}")
 
 
+def _print_check_start(config_path: Path, config: AgentShieldConfig) -> None:
+    modules: list[str] = []
+    seen: set[str] = set()
+    for check in config.checks:
+        module_name = check.module or check.label.split(" - ", 1)[0]
+        if module_name in seen:
+            continue
+        seen.add(module_name)
+        modules.append(module_name)
+    print("AgentShield Check")
+    print(f"Config loaded: {config_path}")
+    print(f"Running checks for {len(modules)} module(s)...")
+
+
+def _print_check_progress(result: CheckResult) -> None:
+    check_titles = {
+        "build": "Build",
+        "lint": "Lint",
+        "typecheck": "TypeCheck",
+        "test": "Test",
+        "coverage": "Coverage",
+        "custom": "Custom",
+    }
+    module = result.module or "root"
+    title = check_titles.get(result.kind, result.kind.title())
+    status = result.status.upper()
+    print(f"[{module}] {title:<10} {status:<7} {result.duration_sec:>6.2f}s  {result.command}")
+    if result.kind == "coverage" and "line" in result.metrics:
+        gate = f"  gate >= {result.gate_target:.1f}%" if result.gate_target is not None else ""
+        print(f"  line: {result.metrics['line']:.1f}%{gate}")
+    if result.status != "pass":
+        details = result.stderr_tail[-1:] or result.stdout_tail[-1:]
+        for line in details:
+            print(f"  detail: {line}")
+
+
 def _print_report(report) -> None:
     check_titles = {
         "build": "Build",
@@ -177,6 +220,7 @@ def _print_init_summary(
     config_path: Path,
     report: ScanReport,
     *,
+    configured_checks: list[CheckConfig] | None = None,
     initialized_baselines: int = 0,
     run_record: Path | None = None,
 ) -> None:
@@ -187,11 +231,33 @@ def _print_init_summary(
     if initialized_baselines:
         print(f"Baselines initialized: {initialized_baselines}")
     print(f"Project: {report.project_name}")
-    print(f"Detected modules: {len(report.modules)}")
-    for module in report.modules:
+    if configured_checks is None:
+        visible_modules = reviewable_modules(report.modules)
+        print(f"Detected business modules: {len(visible_modules)}")
+        for module in visible_modules:
+            print(
+                f"- {module.path}  {module.language}  "
+                f"confidence={module.confidence:.2f}  checks={len(module.recommended_checks)}"
+            )
+        return
+
+    configured_by_module: dict[str, int] = {}
+    for check in configured_checks:
+        if not check.module:
+            continue
+        configured_by_module.setdefault(check.module, 0)
+        configured_by_module[check.module] += 1
+
+    detected_by_path = {module.path: module for module in report.modules}
+    print(f"Configured business modules: {len(configured_by_module)}")
+    for module_path, count in configured_by_module.items():
+        module = detected_by_path.get(module_path)
+        if module is None:
+            print(f"- {module_path}  checks={count}")
+            continue
         print(
             f"- {module.path}  {module.language}  "
-            f"confidence={module.confidence:.2f}  checks={len(module.recommended_checks)}"
+            f"confidence={module.confidence:.2f}  checks={count}"
         )
 
 
@@ -202,12 +268,18 @@ def _print_scan_progress() -> None:
     print("[3/4] Reading CI workflows...")
     print("[4/4] AI analysis...")
 
+def _describe_frameworks(module: ScanModuleSuggestion) -> str:
+    return ", ".join(module.frameworks) if module.frameworks else "no framework detected"
 
-def _confirm(prompt: str) -> bool:
+
+def _confirm(prompt: str, *, default: bool = False) -> bool:
+    default_hint = "[Y/n]" if default else "[y/N]"
     try:
-        value = input(f"{prompt} [y/N]: ").strip().lower()
+        value = input(f"{prompt} {default_hint}: ").strip().lower()
     except EOFError:
-        return False
+        return default
+    if not value:
+        return default
     return value in {"y", "yes"}
 
 
@@ -237,16 +309,19 @@ def _prompt_text(prompt: str, default: str | None = None) -> str:
 
 def _edit_checks(module: ScanModuleSuggestion, checks: list[CheckConfig]) -> list[CheckConfig]:
     while True:
-        print(f"Confirm checks for {module.path}")
+        print(f"Are the check commands correct for {module.path}?")
         for index, check in enumerate(checks, start=1):
             print(f"  [{index}] {check.kind}: {check.command_display()}")
         choice = _prompt_choice(
-            "[1] Confirm all  [2] Edit one  [3] Enter manually",
-            {"1", "2", "3"},
+            "[1] Confirm all  [2] Edit one  [3] Enter manually  [4] Skip this module",
+            {"1", "2", "3", "4"},
             "1",
         )
         if choice == "1":
             return checks
+        if choice == "4":
+            print(f"Skipping module: {module.path}")
+            return []
         if choice == "2":
             edit_index = _prompt_text("Select check number to edit")
             if not edit_index.isdigit():
@@ -287,13 +362,19 @@ def _configure_notify(bootstrap_config: AgentShieldConfig):
     if choice == "2":
         return notify
     webhook_url = _prompt_text("Webhook URL", notify.webhook_url)
-    return notify.model_copy(update={"enabled": bool(webhook_url), "webhook_url": webhook_url or None})
+    return notify.model_copy(
+        update={
+            "enabled": bool(webhook_url),
+            "webhook_url": webhook_url or None,
+            "send_on": ["always"],
+        }
+    )
 
 
 def _run_scan_with_progress(bootstrap_config) -> ScanReport:
     _print_scan_progress()
     snapshot = collect_repo_snapshot(bootstrap_config.project_root)
-    report = run_scan(snapshot, bootstrap_config.llm)
+    report = normalize_scan_report(run_scan(snapshot, bootstrap_config.llm), snapshot)
     report.project_name = bootstrap_config.project.name
     print("AI analysis complete.")
     return report
@@ -307,16 +388,18 @@ def _interactive_initialize_project(
 ) -> tuple[AgentShieldConfig, ScanReport]:
     report = _run_scan_with_progress(bootstrap_config)
     chosen_checks: list[CheckConfig] = []
-    for module in report.modules:
-        print(f"Sub-module: {module.path}")
+    visible_modules = reviewable_modules(report.modules)
+    total_reviewable = len(visible_modules)
+    for index, module in enumerate(visible_modules, start=1):
+        print(f"Sub-module {index}/{total_reviewable}: {module.path}")
         print(
-            f"Detected: {module.language} · {', '.join(module.frameworks) or 'unknown framework'}"
+            f"Detected: {module.language} · {_describe_frameworks(module)}"
         )
-        detection_ok = _confirm("Is the detection correct?")
-        preset_checks = build_preset_checks(module, bootstrap_config.project_root)
+        detection_ok = _confirm("Is the detection correct?", default=True)
+        generated_checks = build_checks_from_scan_module(module, bootstrap_config.project_root)
         if not detection_ok:
-            print("Detection not confirmed. Enter commands manually for this module.")
-        selected_checks = _edit_checks(module, preset_checks)
+            print("Detection not confirmed. Review or replace the suggested commands for this module.")
+        selected_checks = _edit_checks(module, generated_checks)
         chosen_checks.extend(selected_checks)
 
     updated_bootstrap = bootstrap_config.model_copy(
@@ -459,7 +542,7 @@ def _run_internal_scan(argv: list[str]) -> int:
 
     snapshot = collect_repo_snapshot(config.project_root)
     try:
-        report = run_scan(snapshot, config.llm)
+        report = normalize_scan_report(run_scan(snapshot, config.llm), snapshot)
     except ScanAPIError as exc:
         print(str(exc))
         return 1
@@ -508,6 +591,7 @@ def main(argv: list[str] | None = None) -> int:
         _print_init_summary(
             config_path,
             report,
+            configured_checks=generated_config.checks,
             initialized_baselines=len(initialized_baselines),
             run_record=Path(run_report.run_file),
         )
@@ -540,13 +624,13 @@ def main(argv: list[str] | None = None) -> int:
         print("No AgentShield config found. Running analyzer initialization first...")
         try:
             if sys.stdin.isatty():
-                _, init_report = _interactive_initialize_project(
+                generated_config, init_report = _interactive_initialize_project(
                     bootstrap_config=bootstrap_config,
                     config_path=config_path,
                     used_config_file=used_config_file,
                 )
             else:
-                _, init_report = initialize_project(
+                generated_config, init_report = initialize_project(
                     bootstrap_config=bootstrap_config,
                     config_path=config_path,
                     used_config_file=used_config_file,
@@ -554,13 +638,24 @@ def main(argv: list[str] | None = None) -> int:
         except (ScanAPIError, ValueError) as exc:
             print(str(exc))
             return 1
-        _print_init_summary(config_path, init_report)
+        _print_init_summary(
+            config_path,
+            init_report,
+            configured_checks=generated_config.checks,
+        )
 
     config, config_path, used_config_file = load_config(args.config)
     llm_settings = resolve_llm_settings(config.llm)
 
     if config.llm.enabled and not llm_settings.is_configured:
         print("Warning: LLM scan is enabled in config but `base_url` or API key is missing.")
+
+    _print_check_start(config_path, config)
+    progress_lock = threading.Lock()
+
+    def _progress_callback(result: CheckResult) -> None:
+        with progress_lock:
+            _print_check_progress(result)
 
     report, webhook_sent = run_checks(
         config,
@@ -570,6 +665,7 @@ def main(argv: list[str] | None = None) -> int:
         run_dir=RUN_DIR,
         baseline_dir=BASELINE_DIR,
         send_notifications=not args.dry_run,
+        progress_callback=_progress_callback,
     )
     initialized_baselines = [] if args.dry_run else ensure_initial_baselines(report, BASELINE_DIR)
     _print_summary(

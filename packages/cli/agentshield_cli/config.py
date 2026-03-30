@@ -98,8 +98,14 @@ class NotifyConfig(BaseModel):
     enabled: bool = False
     webhook_url: str | None = None
     webhook_url_env: str | None = "AGENTSHIELD_WEBHOOK_URL"
-    send_on: list[Literal["failure", "success", "always"]] = Field(default_factory=lambda: ["failure"])
+    send_on: list[Literal["failure", "success", "always"]] = Field(default_factory=lambda: ["always"])
     timeout_sec: int = 10
+
+    @model_validator(mode="after")
+    def normalize_send_on(self) -> "NotifyConfig":
+        if self.enabled and self.send_on == ["failure"]:
+            self.send_on = ["always"]
+        return self
 
     def resolved_webhook_url(self) -> str | None:
         if self.webhook_url:
