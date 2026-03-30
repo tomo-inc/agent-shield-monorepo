@@ -27,7 +27,7 @@ class ProjectRepository:
         project_key: str,
         project_name: str,
         repo_path: str,
-        preset: str,
+        preset: str | None,
         onboarding_status: str,
         commands_json: dict[str, str] | None,
         thresholds_json: dict[str, object] | None,

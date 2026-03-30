@@ -164,6 +164,15 @@ pnpm check:openapi  openapi.yaml must match the code
 
 A failing check blocks the merge.
 
+## Commit Discipline
+
+Do not treat the first failing command as the whole problem.
+
+- Fixes must be validated against the full affected quality gate before commit.
+- API schema or route changes must re-run `pnpm check:openapi` and update `openapi/openapi.yaml` if the generated contract changes.
+- Package-local fixes are not enough when the change crosses package boundaries. In that case, prefer root commands such as `pnpm typecheck`, `pnpm test`, or `pnpm ci`.
+- Before commit, run `git status --short` and verify that generated or derived files are not left stale.
+
 ---
 
 ## Project Documents

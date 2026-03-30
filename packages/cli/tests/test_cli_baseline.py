@@ -46,9 +46,14 @@ def test_baseline_update_writes_module_baseline(monkeypatch, tmp_path: Path) -> 
     monkeypatch.chdir(tmp_path)
     _write_run(tmp_path / ".qa-agent" / "runs")
     monkeypatch.setattr("builtins.input", lambda _: "y")
+    calls: list[tuple[list[str] | None, str]] = []
+    monkeypatch.setattr(
+        "agentshield_cli.cli.sync_baselines",
+        lambda config, *, baseline_dir, updated_at, module_names=None: calls.append((module_names, config.project.name)),
+    )
 
     exit_code = main(["baseline", "update", "--module", "apps/api"])
 
     assert exit_code == 0
     assert (tmp_path / ".agentshield" / "baselines" / "apps-api.json").exists()
-
+    assert calls == [(["apps/api"], tmp_path.name)]
