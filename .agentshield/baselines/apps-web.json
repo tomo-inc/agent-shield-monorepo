@@ -1,0 +1,63 @@
+{
+  "module": "apps/web",
+  "created_at": "2026-03-30T06:36:03.902928+00:00",
+  "source_created_at": "2026-03-30T06:36:03.900553+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T06-36-03.900553+00-00.json",
+  "thresholds": {
+    "line": 6.1
+  },
+  "checks": [
+    {
+      "id": "apps-web-build",
+      "label": "apps/web - build",
+      "module": "apps/web",
+      "kind": "build",
+      "command": "pnpm build",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "apps-web-lint",
+      "label": "apps/web - lint",
+      "module": "apps/web",
+      "kind": "lint",
+      "command": "pnpm lint",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "apps-web-typecheck",
+      "label": "apps/web - typecheck",
+      "module": "apps/web",
+      "kind": "typecheck",
+      "command": "pnpm typecheck",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "apps-web-test",
+      "label": "apps/web - test",
+      "module": "apps/web",
+      "kind": "test",
+      "command": "pnpm test",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "apps-web-coverage",
+      "label": "apps/web - coverage",
+      "module": "apps/web",
+      "kind": "coverage",
+      "command": "pnpm exec vitest run --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=json-summary --coverage.reporter=text --coverage.reportsDirectory=../../.qa-agent/generated/coverage/apps-web",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {
+        "line": 6.1
+      }
+    }
+  ]
+}

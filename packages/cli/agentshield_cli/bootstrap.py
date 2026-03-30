@@ -9,65 +9,36 @@ import yaml
 from agentshield_cli.analyzer.ai_client import ScanAPIError, run_scan
 from agentshield_cli.analyzer.scanner import collect_repo_snapshot
 from agentshield_cli.config import AgentShieldConfig, CheckConfig, ProjectConfig
-from agentshield_cli.models import ScanCheckSuggestion, ScanModuleSuggestion, ScanReport
+from agentshield_cli.models import ScanReport
+from agentshield_cli.presets import build_preset_checks
 
 
 def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
-def _timeout_for_check(check_id: str) -> int:
-    lowered = check_id.lower()
-    if "openapi" in lowered:
-        return 600
-    if "test" in lowered:
-        return 1800
-    return 1200
-
-
-def _normalized_check(
-    module: ScanModuleSuggestion,
-    suggestion: ScanCheckSuggestion,
-) -> CheckConfig | None:
-    argv = suggestion.resolved_argv()
-    if not argv:
-        return None
-    module_slug = _slug(module.path or module.name)
-    check_slug = _slug(suggestion.id)
-    check_id = f"{module_slug}-{check_slug}" if module_slug else check_slug
-    return CheckConfig(
-        id=check_id,
-        label=f"{module.path} - {suggestion.id}",
-        argv=argv,
-        cwd=suggestion.cwd,
-        timeout_sec=_timeout_for_check(suggestion.id),
-    )
-
-
-def _iter_checks(report: ScanReport) -> Iterable[CheckConfig]:
+def iter_checks_from_scan(report: ScanReport, project_root: Path) -> Iterable[CheckConfig]:
     for module in report.modules:
-        for suggestion in module.recommended_checks:
-            check = _normalized_check(module, suggestion)
-            if check is not None:
-                yield check
+        for check in build_preset_checks(module, project_root):
+            yield check
 
 
-def build_config_from_scan(
-    report: ScanReport,
+def build_config_payload(
     *,
+    project_name: str,
     project_root: Path,
+    checks: list[CheckConfig],
     existing_config: AgentShieldConfig,
     include_llm: bool,
     include_notify: bool,
 ) -> tuple[AgentShieldConfig, dict[str, object]]:
-    checks = list(_iter_checks(report))
     if not checks:
         msg = "Analyzer did not return any runnable checks."
         raise ValueError(msg)
 
     config = AgentShieldConfig(
         version=1,
-        project=ProjectConfig(name=report.project_name or project_root.name, root="."),
+        project=ProjectConfig(name=project_name or project_root.name, root="."),
         checks=checks,
         llm=existing_config.llm,
         notify=existing_config.notify,
@@ -83,6 +54,25 @@ def build_config_from_scan(
     if include_notify:
         payload["notify"] = config.notify.model_dump(mode="json", exclude_none=True)
     return config, payload
+
+
+def build_config_from_scan(
+    report: ScanReport,
+    *,
+    project_root: Path,
+    existing_config: AgentShieldConfig,
+    include_llm: bool,
+    include_notify: bool,
+) -> tuple[AgentShieldConfig, dict[str, object]]:
+    checks = list(iter_checks_from_scan(report, project_root))
+    return build_config_payload(
+        project_name=report.project_name or project_root.name,
+        project_root=project_root,
+        checks=checks,
+        existing_config=existing_config,
+        include_llm=include_llm,
+        include_notify=include_notify,
+    )
 
 
 def write_generated_config(payload: dict[str, object], config_path: Path) -> None:

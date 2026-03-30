@@ -36,8 +36,10 @@ def test_build_config_from_scan_generates_argv_checks(tmp_path: Path) -> None:
     )
 
     assert config.project.name == "demo-repo"
-    assert config.checks[0].argv == ["pytest"]
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert config.checks[0].argv == ["uv", "build", "."]
     assert config.checks[1].cwd == "apps/api"
+    assert config.checks[-1].coverage_parser == "coverage.py-json"
     assert "llm" not in payload
 
 

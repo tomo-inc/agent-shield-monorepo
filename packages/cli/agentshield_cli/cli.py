@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 
@@ -13,11 +14,12 @@ from agentshield_cli.baseline import (
     summarize_baseline,
     update_baselines,
 )
-from agentshield_cli.bootstrap import initialize_project
-from agentshield_cli.config import load_config
+from agentshield_cli.bootstrap import build_config_payload, initialize_project, write_generated_config
+from agentshield_cli.config import AgentShieldConfig, CheckConfig, load_config
 from agentshield_cli.history import group_checks_by_module, list_run_reports, latest_run_report, summarize_checks
 from agentshield_cli.llm import resolve_llm_settings
-from agentshield_cli.models import ScanReport
+from agentshield_cli.models import ScanModuleSuggestion, ScanReport
+from agentshield_cli.presets import build_preset_checks
 from agentshield_cli.runner import run_checks
 
 BASELINE_DIR = Path(".agentshield/baselines")
@@ -107,16 +109,31 @@ def _print_summary(
 
 
 def _print_report(report) -> None:
+    check_titles = {
+        "build": "Build",
+        "lint": "Lint",
+        "typecheck": "TypeCheck",
+        "test": "Test",
+        "coverage": "Coverage",
+        "custom": "Custom",
+    }
     print(f"Project: {report.project_name}")
-    for check in report.checks:
-        status = check.status.upper()
-        print(f"- {check.label:<10} {status:<7} {check.duration_sec:>6.2f}s  {check.command}")
-        if check.status != "pass":
-            for line in check.stderr_tail[-3:]:
-                print(f"  stderr: {line}")
-            if not check.stderr_tail:
-                for line in check.stdout_tail[-3:]:
-                    print(f"  stdout: {line}")
+    grouped = group_checks_by_module(report)
+    for module, checks in grouped.items():
+        print(f"Module: {module}")
+        for check in checks:
+            status = check.status.upper()
+            title = check_titles.get(check.kind, check.kind.title())
+            print(f"- {title:<10} {status:<7} {check.duration_sec:>6.2f}s  {check.command}")
+            if check.kind == "coverage" and "line" in check.metrics:
+                gate = f"  gate >= {check.gate_target:.1f}%" if check.gate_target is not None else ""
+                print(f"  line: {check.metrics['line']:.1f}%{gate}")
+            if check.status != "pass":
+                for line in check.stderr_tail[-3:]:
+                    print(f"  stderr: {line}")
+                if not check.stderr_tail:
+                    for line in check.stdout_tail[-3:]:
+                        print(f"  stdout: {line}")
     print(f"Result: {report.status.upper()}")
 
 
@@ -156,9 +173,19 @@ def _print_scan_report(report: ScanReport, report_path: Path) -> None:
         print(f"Global note: {note}")
 
 
-def _print_init_summary(config_path: Path, report: ScanReport) -> None:
+def _print_init_summary(
+    config_path: Path,
+    report: ScanReport,
+    *,
+    initialized_baselines: int = 0,
+    run_record: Path | None = None,
+) -> None:
     print("AgentShield Init")
     print(f"Config written: {config_path}")
+    if run_record is not None:
+        print(f"Initial run record: {run_record}")
+    if initialized_baselines:
+        print(f"Baselines initialized: {initialized_baselines}")
     print(f"Project: {report.project_name}")
     print(f"Detected modules: {len(report.modules)}")
     for module in report.modules:
@@ -168,12 +195,143 @@ def _print_init_summary(config_path: Path, report: ScanReport) -> None:
         )
 
 
+def _print_scan_progress() -> None:
+    print("AgentShield Analyzer")
+    print("[1/4] Reading directory tree (3 levels)...")
+    print("[2/4] Reading key config files...")
+    print("[3/4] Reading CI workflows...")
+    print("[4/4] AI analysis...")
+
+
 def _confirm(prompt: str) -> bool:
     try:
         value = input(f"{prompt} [y/N]: ").strip().lower()
     except EOFError:
         return False
     return value in {"y", "yes"}
+
+
+def _prompt_choice(prompt: str, valid_choices: set[str], default: str) -> str:
+    while True:
+        try:
+            value = input(f"{prompt} ").strip()
+        except EOFError:
+            return default
+        if not value:
+            return default
+        if value in valid_choices:
+            return value
+        print(f"Expected one of: {', '.join(sorted(valid_choices))}")
+
+
+def _prompt_text(prompt: str, default: str | None = None) -> str:
+    suffix = f" [{default}]" if default else ""
+    try:
+        value = input(f"{prompt}{suffix}: ").strip()
+    except EOFError:
+        return default or ""
+    if value:
+        return value
+    return default or ""
+
+
+def _edit_checks(module: ScanModuleSuggestion, checks: list[CheckConfig]) -> list[CheckConfig]:
+    while True:
+        print(f"Confirm checks for {module.path}")
+        for index, check in enumerate(checks, start=1):
+            print(f"  [{index}] {check.kind}: {check.command_display()}")
+        choice = _prompt_choice(
+            "[1] Confirm all  [2] Edit one  [3] Enter manually",
+            {"1", "2", "3"},
+            "1",
+        )
+        if choice == "1":
+            return checks
+        if choice == "2":
+            edit_index = _prompt_text("Select check number to edit")
+            if not edit_index.isdigit():
+                print("Expected a numeric check selection.")
+                continue
+            index = int(edit_index) - 1
+            if index < 0 or index >= len(checks):
+                print("Check number out of range.")
+                continue
+            selected = checks[index]
+            new_command = _prompt_text("Enter replacement command", selected.command_display())
+            checks[index] = selected.model_copy(update={"argv": shlex.split(new_command), "run": None})
+            continue
+
+        manual_checks: list[CheckConfig] = []
+        for check in checks:
+            manual_command = _prompt_text(
+                f"Command for {module.path} {check.kind} (leave blank to skip)",
+                check.command_display(),
+            )
+            if not manual_command:
+                continue
+            manual_checks.append(
+                check.model_copy(update={"argv": shlex.split(manual_command), "run": None})
+            )
+        if manual_checks:
+            return manual_checks
+        print("No manual checks entered; keeping generated defaults.")
+
+
+def _configure_notify(bootstrap_config: AgentShieldConfig):
+    notify = bootstrap_config.notify
+    choice = _prompt_choice(
+        "Configure notification channel? [1] Set webhook  [2] Skip for now",
+        {"1", "2"},
+        "2",
+    )
+    if choice == "2":
+        return notify
+    webhook_url = _prompt_text("Webhook URL", notify.webhook_url)
+    return notify.model_copy(update={"enabled": bool(webhook_url), "webhook_url": webhook_url or None})
+
+
+def _run_scan_with_progress(bootstrap_config) -> ScanReport:
+    _print_scan_progress()
+    snapshot = collect_repo_snapshot(bootstrap_config.project_root)
+    report = run_scan(snapshot, bootstrap_config.llm)
+    report.project_name = bootstrap_config.project.name
+    print("AI analysis complete.")
+    return report
+
+
+def _interactive_initialize_project(
+    *,
+    bootstrap_config: AgentShieldConfig,
+    config_path: Path,
+    used_config_file: bool,
+) -> tuple[AgentShieldConfig, ScanReport]:
+    report = _run_scan_with_progress(bootstrap_config)
+    chosen_checks: list[CheckConfig] = []
+    for module in report.modules:
+        print(f"Sub-module: {module.path}")
+        print(
+            f"Detected: {module.language} · {', '.join(module.frameworks) or 'unknown framework'}"
+        )
+        detection_ok = _confirm("Is the detection correct?")
+        preset_checks = build_preset_checks(module, bootstrap_config.project_root)
+        if not detection_ok:
+            print("Detection not confirmed. Enter commands manually for this module.")
+        selected_checks = _edit_checks(module, preset_checks)
+        chosen_checks.extend(selected_checks)
+
+    updated_bootstrap = bootstrap_config.model_copy(
+        update={"notify": _configure_notify(bootstrap_config)}
+    )
+    generated_config, payload = build_config_payload(
+        project_name=report.project_name,
+        project_root=bootstrap_config.project_root,
+        checks=chosen_checks,
+        existing_config=updated_bootstrap,
+        include_llm=used_config_file,
+        include_notify=True,
+    )
+    write_generated_config(payload, config_path)
+    return generated_config, report
 
 
 def _print_baseline_preview(module: str, current_summary, latest_summary, current_record) -> None:
@@ -329,7 +487,7 @@ def main(argv: list[str] | None = None) -> int:
             print("LLM initialization is missing `base_url` or `api_key`.")
             return 2
         try:
-            _, report = initialize_project(
+            generated_config, report = initialize_project(
                 bootstrap_config=bootstrap_config,
                 config_path=config_path,
                 used_config_file=used_config_file,
@@ -337,7 +495,25 @@ def main(argv: list[str] | None = None) -> int:
         except (ScanAPIError, ValueError) as exc:
             print(str(exc))
             return 1
-        _print_init_summary(config_path, report)
+        run_report, _ = run_checks(
+            generated_config,
+            config_path=config_path,
+            used_config_file=used_config_file,
+            strict=True,
+            run_dir=RUN_DIR,
+            baseline_dir=BASELINE_DIR,
+            send_notifications=False,
+        )
+        initialized_baselines = ensure_initial_baselines(run_report, BASELINE_DIR)
+        _print_init_summary(
+            config_path,
+            report,
+            initialized_baselines=len(initialized_baselines),
+            run_record=Path(run_report.run_file),
+        )
+        if run_report.status != "pass":
+            _print_report(run_report)
+            return 1
         return 0
 
     if args.command == "baseline":
@@ -363,11 +539,18 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print("No AgentShield config found. Running analyzer initialization first...")
         try:
-            _, init_report = initialize_project(
-                bootstrap_config=bootstrap_config,
-                config_path=config_path,
-                used_config_file=used_config_file,
-            )
+            if sys.stdin.isatty():
+                _, init_report = _interactive_initialize_project(
+                    bootstrap_config=bootstrap_config,
+                    config_path=config_path,
+                    used_config_file=used_config_file,
+                )
+            else:
+                _, init_report = initialize_project(
+                    bootstrap_config=bootstrap_config,
+                    config_path=config_path,
+                    used_config_file=used_config_file,
+                )
         except (ScanAPIError, ValueError) as exc:
             print(str(exc))
             return 1
@@ -385,6 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         used_config_file=used_config_file,
         strict=args.strict,
         run_dir=RUN_DIR,
+        baseline_dir=BASELINE_DIR,
         send_notifications=not args.dry_run,
     )
     initialized_baselines = [] if args.dry_run else ensure_initial_baselines(report, BASELINE_DIR)

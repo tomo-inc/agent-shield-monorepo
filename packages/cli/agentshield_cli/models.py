@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shlex
 from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -9,10 +10,14 @@ from pydantic import BaseModel, Field
 class CheckResult(BaseModel):
     id: str
     label: str
+    module: str | None = None
+    kind: Literal["build", "lint", "typecheck", "test", "coverage", "custom"] = "custom"
     command: str
     status: str
     exit_code: int
     duration_sec: float
+    metrics: dict[str, float] = Field(default_factory=dict)
+    gate_target: float | None = None
     stdout_tail: list[str] = Field(default_factory=list)
     stderr_tail: list[str] = Field(default_factory=list)
 
@@ -35,9 +40,12 @@ class RunReport(BaseModel):
 class BaselineCheck(BaseModel):
     id: str
     label: str
+    module: str | None = None
+    kind: Literal["build", "lint", "typecheck", "test", "coverage", "custom"] = "custom"
     command: str
     status: str
     exit_code: int
+    metrics: dict[str, float] = Field(default_factory=dict)
 
 
 class BaselineRecord(BaseModel):
@@ -45,6 +53,7 @@ class BaselineRecord(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     source_created_at: str
     source_run_file: str
+    thresholds: dict[str, float] = Field(default_factory=dict)
     checks: list[BaselineCheck] = Field(default_factory=list)
 
 

@@ -10,6 +10,8 @@ apps/web/tsconfig.tsbuildinfo
 .venv/
 __pycache__/
 .pytest_cache/
+.coverage
+.coverage.*
 .ruff_cache/
 .pyright/
 

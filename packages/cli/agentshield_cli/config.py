@@ -26,9 +26,13 @@ class CheckConfig(BaseModel):
 
     id: str
     label: str
+    module: str | None = None
+    kind: Literal["build", "lint", "typecheck", "test", "coverage", "custom"] = "custom"
     argv: list[str] | None = None
     run: str | None = None
     cwd: str | None = None
+    coverage_parser: Literal["coverage.py-json", "istanbul-summary"] | None = None
+    coverage_file: str | None = None
     timeout_sec: int = 1200
     enabled: bool = True
 
@@ -36,6 +40,13 @@ class CheckConfig(BaseModel):
     def validate_command_source(self) -> "CheckConfig":
         if not self.argv and not self.run:
             msg = "Each check must define either `argv` or `run`."
+            raise ValueError(msg)
+        if self.kind == "coverage":
+            if not self.coverage_parser or not self.coverage_file:
+                msg = "Coverage checks must define `coverage_parser` and `coverage_file`."
+                raise ValueError(msg)
+        if (self.coverage_parser is None) != (self.coverage_file is None):
+            msg = "`coverage_parser` and `coverage_file` must be set together."
             raise ValueError(msg)
         return self
 
