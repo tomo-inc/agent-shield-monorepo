@@ -499,7 +499,9 @@ components:
           title: Project Name
           description: Display name
         preset:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Preset
           description: CLI resolved preset
         module_count:
@@ -602,7 +604,9 @@ components:
           title: Project Name
           description: Display name
         preset:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Preset
           description: CLI resolved preset
         onboarding_status:
@@ -713,7 +717,9 @@ components:
           title: Repo Path
           description: Repository path
         preset:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Preset
           description: CLI resolved preset
         onboarding_status:
@@ -756,7 +762,6 @@ components:
       - project_key
       - project_name
       - repo_path
-      - preset
       - onboarding_status
       - modules
       title: PanelProjectRegisterRequest
