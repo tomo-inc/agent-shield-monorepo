@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { currentFocus, priorities } from "@/src/lib/project";
 
 const governanceFiles = ["AGENTS.md", "CLAUDE.md", "skillscloud.md"];
@@ -83,6 +85,39 @@ export default function Home() {
             <li key={item}>{item}</li>
           ))}
         </ol>
+      </section>
+
+      <section
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "20px",
+          padding: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: "0 0 8px" }}>Panel</h2>
+          <p style={{ margin: 0, color: "var(--muted)" }}>
+            Open the project overview page backed by the mock panel API.
+          </p>
+        </div>
+        <Link
+          href="/panel"
+          style={{
+            padding: "10px 16px",
+            borderRadius: "999px",
+            background: "var(--accent)",
+            color: "#fff",
+            fontWeight: 600,
+          }}
+        >
+          Open panel
+        </Link>
       </section>
     </main>
   );

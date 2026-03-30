@@ -145,20 +145,22 @@ Module 1 --- 1 Baseline
 
 字段：
 
-| 字段 | 类型 | 含义 |
-|---|---|---|
-| `id` | integer PK | 主键 |
-| `project_key` | text unique | 项目唯一标识，推荐使用 `project.name`,CI阶段init初始化key，repo唯一，本地运行不上报中心化panel |
-| `project_name` | text | 展示名称 |
-| `repo_path` | text | 仓库路径 |
-| `preset` | text | CLI 识别的 preset |
-| `onboarding_status` | text | `ready / pending / blocked / custom-needed` |
-| `commands_json` | text nullable | 初始化阶段确认后的命令配置 |
-| `thresholds_json` | text nullable | coverage/lint/typecheck 阈值配置 |
-| `timeouts_json` | text nullable | timeout 配置 |
-| `notify_json` | text nullable | 通知配置 |
-| `created_at` | datetime | 创建时间 |
-| `updated_at` | datetime | 最后更新时间 |
+
+| 字段                  | 类型            | 含义                                                               |
+| ------------------- | ------------- | ---------------------------------------------------------------- |
+| `id`                | integer PK    | 主键                                                               |
+| `project_key`       | text unique   | 项目唯一标识，推荐使用 `project.name`,CI阶段init初始化key，repo唯一，本地运行不上报中心化panel |
+| `project_name`      | text          | 展示名称                                                             |
+| `repo_path`         | text          | 仓库路径                                                             |
+| `preset`            | text          | CLI 识别的 preset                                                   |
+| `onboarding_status` | text          | `ready / pending / blocked / custom-needed`                      |
+| `commands_json`     | text nullable | 初始化阶段确认后的命令配置                                                    |
+| `thresholds_json`   | text nullable | coverage/lint/typecheck 阈值配置                                     |
+| `timeouts_json`     | text nullable | timeout 配置                                                       |
+| `notify_json`       | text nullable | 通知配置                                                             |
+| `created_at`        | datetime      | 创建时间                                                             |
+| `updated_at`        | datetime      | 最后更新时间                                                           |
+
 
 唯一键：
 
@@ -178,22 +180,24 @@ Module 1 --- 1 Baseline
 
 字段：
 
-| 字段 | 类型 | 含义 |
-|---|---|---|
-| `id` | integer PK | 主键 |
-| `project_id` | integer FK | 关联 `panel_projects.id` |
-| `run_key` | text unique | 运行唯一键，建议 `project + git_sha + started_at + source` |
-| `source` | text nullable | 来源，如 `local-cli`、`github-actions` |
-| `git_ref` | text nullable | 分支或 tag |
-| `git_sha` | text nullable | commit SHA |
-| `triggered_by` | text nullable | 触发者 |
-| `started_at` | datetime nullable | 开始时间 |
-| `finished_at` | datetime nullable | 结束时间 |
-| `duration_sec` | real nullable | 总耗时 |
-| `strict_mode` | boolean | 是否 `--strict` |
-| `status` | text | 项目级结果：`pass / fail / timeout / blocked / not-run` |
-| `block_reason` | text nullable | 项目级阻塞原因 |
-| `created_at` | datetime | 写入时间 |
+
+| 字段             | 类型                | 含义                                                 |
+| -------------- | ----------------- | -------------------------------------------------- |
+| `id`           | integer PK        | 主键                                                 |
+| `project_id`   | integer FK        | 关联 `panel_projects.id`                             |
+| `run_key`      | text unique       | 运行唯一键，建议 `project + git_sha + started_at + source` |
+| `source`       | text nullable     | 来源，如 `local-cli`、`github-actions`                  |
+| `git_ref`      | text nullable     | 分支或 tag                                            |
+| `git_sha`      | text nullable     | commit SHA                                         |
+| `triggered_by` | text nullable     | 触发者                                                |
+| `started_at`   | datetime nullable | 开始时间                                               |
+| `finished_at`  | datetime nullable | 结束时间                                               |
+| `duration_sec` | real nullable     | 总耗时                                                |
+| `strict_mode`  | boolean           | 是否 `--strict`                                      |
+| `status`       | text              | 项目级结果：`pass / fail / timeout / blocked / not-run`  |
+| `block_reason` | text nullable     | 项目级阻塞原因                                            |
+| `created_at`   | datetime          | 写入时间                                               |
+
 
 唯一键：
 
@@ -213,21 +217,23 @@ Module 1 --- 1 Baseline
 
 字段：
 
-| 字段 | 类型 | 含义 |
-|---|---|---|
-| `id` | integer PK | 主键 |
-| `project_id` | integer FK | 关联 `panel_projects.id` |
-| `module_name` | text | 模块名，如 `apps/api` |
-| `stack` | text nullable | 技术栈文本，如 `Python / FastAPI` |
-| `language` | text nullable | 主语言或标签 |
-| `status` | text | 模块当前状态 |
-| `coverage_pct` | real nullable | 当前 coverage |
-| `baseline_pct` | real nullable | 当前 baseline |
-| `coverage_gate_pct` | real nullable | 当前 gate |
+
+| 字段                   | 类型            | 含义                         |
+| -------------------- | ------------- | -------------------------- |
+| `id`                 | integer PK    | 主键                         |
+| `project_id`         | integer FK    | 关联 `panel_projects.id`     |
+| `module_name`        | text          | 模块名，如 `apps/api`           |
+| `stack`              | text nullable | 技术栈文本，如 `Python / FastAPI` |
+| `language`           | text nullable | 主语言或标签                     |
+| `status`             | text          | 模块当前状态                     |
+| `coverage_pct`       | real nullable | 当前 coverage                |
+| `baseline_pct`       | real nullable | 当前 baseline                |
+| `coverage_gate_pct`  | real nullable | 当前 gate                    |
 | `coverage_delta_pct` | real nullable | 当前 coverage 与 baseline 的差值 |
-| `coverage_parser` | text nullable | coverage parser |
-| `block_reason` | text nullable | 当前模块级阻塞原因 |
-| `updated_at` | datetime | 最后同步时间 |
+| `coverage_parser`    | text nullable | coverage parser            |
+| `block_reason`       | text nullable | 当前模块级阻塞原因                  |
+| `updated_at`         | datetime      | 最后同步时间                     |
+
 
 唯一键：
 
@@ -246,16 +252,18 @@ Module 1 --- 1 Baseline
 
 字段：
 
-| 字段 | 类型 | 含义 |
-|---|---|---|
-| `id` | integer PK | 主键 |
-| `run_id` | integer FK | 关联 `panel_runs.id` |
-| `module_id` | integer FK | 关联 `panel_modules.id` |
-| `checker` | text | `build / lint / typecheck / test / coverage` |
-| `status` | text | `pass / fail / timeout / skip` |
-| `detail` | text nullable | checker 输出摘要 |
-| `duration_sec` | real nullable | checker 耗时 |
-| `created_at` | datetime | 写入时间 |
+
+| 字段             | 类型            | 含义                                           |
+| -------------- | ------------- | -------------------------------------------- |
+| `id`           | integer PK    | 主键                                           |
+| `run_id`       | integer FK    | 关联 `panel_runs.id`                           |
+| `module_id`    | integer FK    | 关联 `panel_modules.id`                        |
+| `checker`      | text          | `build / lint / typecheck / test / coverage` |
+| `status`       | text          | `pass / fail / timeout / skip`               |
+| `detail`       | text nullable | checker 输出摘要                                 |
+| `duration_sec` | real nullable | checker 耗时                                   |
+| `created_at`   | datetime      | 写入时间                                         |
+
 
 唯一键：
 
@@ -275,13 +283,15 @@ Module 1 --- 1 Baseline
 
 字段：
 
-| 字段 | 类型 | 含义 |
-|---|---|---|
-| `id` | integer PK | 主键 |
-| `project_id` | integer FK | 关联 `panel_projects.id` |
-| `module_id` | integer FK | 关联 `panel_modules.id` |
+
+| 字段             | 类型            | 含义                        |
+| -------------- | ------------- | ------------------------- |
+| `id`           | integer PK    | 主键                        |
+| `project_id`   | integer FK    | 关联 `panel_projects.id`    |
+| `module_id`    | integer FK    | 关联 `panel_modules.id`     |
 | `baseline_pct` | real nullable | 当前 baseline line coverage |
-| `updated_at` | datetime | baseline 最后更新时间 |
+| `updated_at`   | datetime      | baseline 最后更新时间           |
+
 
 唯一键：
 
@@ -604,57 +614,65 @@ Week 1 建议规则：
 
 ## 9.1 初始化信息映射
 
-| CLI 字段 | 目标表 | 目标字段 |
-|---|---|---|
-| `project.name` | `panel_projects` | `project_key`, `project_name` |
-| `project.repo_path` | `panel_projects` | `repo_path` |
-| `project.preset` | `panel_projects` | `preset` |
-| `commands` | `panel_projects` | `commands_json` |
-| `thresholds` | `panel_projects` | `thresholds_json` |
-| `timeouts` | `panel_projects` | `timeouts_json` |
-| `notify` | `panel_projects` | `notify_json` |
-| 模块列表 | `panel_modules` | `module_name`, `stack`, `language` |
+
+| CLI 字段              | 目标表              | 目标字段                               |
+| ------------------- | ---------------- | ---------------------------------- |
+| `project.name`      | `panel_projects` | `project_key`, `project_name`      |
+| `project.repo_path` | `panel_projects` | `repo_path`                        |
+| `project.preset`    | `panel_projects` | `preset`                           |
+| `commands`          | `panel_projects` | `commands_json`                    |
+| `thresholds`        | `panel_projects` | `thresholds_json`                  |
+| `timeouts`          | `panel_projects` | `timeouts_json`                    |
+| `notify`            | `panel_projects` | `notify_json`                      |
+| 模块列表                | `panel_modules`  | `module_name`, `stack`, `language` |
+
 
 ## 9.2 baseline 映射
 
-| CLI 字段 | 目标表 | 目标字段 |
-|---|---|---|
-| `project_key` | `panel_projects` | 关联定位 |
-| `module_name` | `panel_modules` | 关联定位 |
+
+| CLI 字段         | 目标表               | 目标字段           |
+| -------------- | ----------------- | -------------- |
+| `project_key`  | `panel_projects`  | 关联定位           |
+| `module_name`  | `panel_modules`   | 关联定位           |
 | `baseline_pct` | `panel_baselines` | `baseline_pct` |
-| `baseline_pct` | `panel_modules` | `baseline_pct` |
-| `updated_at` | `panel_baselines` | `updated_at` |
+| `baseline_pct` | `panel_modules`   | `baseline_pct` |
+| `updated_at`   | `panel_baselines` | `updated_at`   |
+
 
 ## 9.3 run 结果映射
 
-| CLI 字段 | 目标表 | 目标字段 |
-|---|---|---|
-| `run_key` | `panel_runs` | `run_key` |
-| `source` | `panel_runs` | `source` |
-| `git_ref` | `panel_runs` | `git_ref` |
-| `git_sha` | `panel_runs` | `git_sha` |
+
+| CLI 字段         | 目标表          | 目标字段           |
+| -------------- | ------------ | -------------- |
+| `run_key`      | `panel_runs` | `run_key`      |
+| `source`       | `panel_runs` | `source`       |
+| `git_ref`      | `panel_runs` | `git_ref`      |
+| `git_sha`      | `panel_runs` | `git_sha`      |
 | `triggered_by` | `panel_runs` | `triggered_by` |
-| `started_at` | `panel_runs` | `started_at` |
-| `finished_at` | `panel_runs` | `finished_at` |
+| `started_at`   | `panel_runs` | `started_at`   |
+| `finished_at`  | `panel_runs` | `finished_at`  |
 | `duration_sec` | `panel_runs` | `duration_sec` |
-| `strict_mode` | `panel_runs` | `strict_mode` |
-| 项目最终状态 | `panel_runs` | `status` |
-| 项目阻塞原因 | `panel_runs` | `block_reason` |
+| `strict_mode`  | `panel_runs` | `strict_mode`  |
+| 项目最终状态         | `panel_runs` | `status`       |
+| 项目阻塞原因         | `panel_runs` | `block_reason` |
+
 
 ## 9.4 Module 结果映射
 
-| CLI 字段 | 目标表 | 目标字段 |
-|---|---|---|
-| `module_name` | `panel_modules` | `module_name` |
-| `stack` | `panel_modules` | `stack` |
-| `language` | `panel_modules` | `language` |
-| 模块状态 | `panel_modules` | `status` |
-| `coverage_pct` | `panel_modules` | `coverage_pct` |
-| `baseline_pct` | `panel_modules` | `baseline_pct` |
-| `coverage_gate_pct` | `panel_modules` | `coverage_gate_pct` |
+
+| CLI 字段               | 目标表             | 目标字段                 |
+| -------------------- | --------------- | -------------------- |
+| `module_name`        | `panel_modules` | `module_name`        |
+| `stack`              | `panel_modules` | `stack`              |
+| `language`           | `panel_modules` | `language`           |
+| 模块状态                 | `panel_modules` | `status`             |
+| `coverage_pct`       | `panel_modules` | `coverage_pct`       |
+| `baseline_pct`       | `panel_modules` | `baseline_pct`       |
+| `coverage_gate_pct`  | `panel_modules` | `coverage_gate_pct`  |
 | `coverage_delta_pct` | `panel_modules` | `coverage_delta_pct` |
-| `coverage_parser` | `panel_modules` | `coverage_parser` |
-| 模块阻塞原因 | `panel_modules` | `block_reason` |
+| `coverage_parser`    | `panel_modules` | `coverage_parser`    |
+| 模块阻塞原因               | `panel_modules` | `block_reason`       |
+
 
 ## 9.5 Checker 结果映射
 
@@ -734,13 +752,15 @@ coverage 数值部分：
 
 ## 10.3 Health
 
-| Project `status` | `health` |
-|---|---|
-| `pass` | `healthy` |
-| `fail` | `failing` |
-| `timeout` | `warning` |
-| `blocked` | `warning` |
-| `not-run` | `unknown` |
+
+| Project `status` | `health`  |
+| ---------------- | --------- |
+| `pass`           | `healthy` |
+| `fail`           | `failing` |
+| `timeout`        | `warning` |
+| `blocked`        | `warning` |
+| `not-run`        | `unknown` |
+
 
 ## 11. 时序图
 
@@ -763,6 +783,8 @@ sequenceDiagram
     API-->>CLI: 200 OK
 ```
 
+
+
 ## 11.2 baseline 上传时序
 
 ```mermaid
@@ -781,6 +803,8 @@ sequenceDiagram
     DB-->>API: success
     API-->>CLI: 200 OK
 ```
+
+
 
 ## 11.3 check 结果上传时序
 
@@ -808,6 +832,8 @@ sequenceDiagram
     API-->>WEB: panel response
 ```
 
+
+
 ## 12. 上传失败策略
 
 Week 1 建议：
@@ -833,3 +859,4 @@ Week 1 Panel 的正确设计是：
   - `panel_modules`：模块当前快照
   - `panel_checker_results`：每次 Run 的 checker 细粒度结果
   - `panel_baselines`：模块当前 baseline
+

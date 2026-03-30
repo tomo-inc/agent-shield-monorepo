@@ -2,6 +2,8 @@ from typing import Final
 
 from fastapi import FastAPI
 
+from app.panel.routes.get_project_detail import router as panel_project_detail_router
+from app.panel.routes.get_projects import router as panel_projects_router
 from app.schemas.qa import Capability, CapabilityCatalog, HealthResponse
 
 APP_TITLE: Final[str] = "AgentShield QA Automation API"
@@ -16,6 +18,8 @@ app = FastAPI(
     summary="Phase 1 scaffold for QA automation",
     description="Monorepo-aligned FastAPI service for AgentShield. Current scope is QA automation only.",
 )
+app.include_router(panel_projects_router)
+app.include_router(panel_project_detail_router)
 
 CAPABILITIES: Final[tuple[Capability, ...]] = (
     Capability(
@@ -73,3 +77,4 @@ def healthz() -> HealthResponse:
 )
 def list_capabilities() -> CapabilityCatalog:
     return _CAPABILITIES_CATALOG
+

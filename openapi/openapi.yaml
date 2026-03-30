@@ -6,6 +6,71 @@ info:
     QA automation only.
   version: 0.1.0
 paths:
+  /api/v1/panel/projects:
+    get:
+      tags:
+      - panel
+      summary: List supported panel projects
+      operationId: listPanelProjects
+      responses:
+        '200':
+          description: Panel project overview list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectsResponse'
+  /api/v1/panel/projects/{project_key}:
+    get:
+      tags:
+      - panel
+      summary: Get panel project detail
+      operationId: getPanelProject
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Project Key
+      responses:
+        '200':
+          description: Panel project detail record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectDetailResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/panel/projects/{project_key}/latest:
+    get:
+      tags:
+      - panel
+      summary: Get latest run for a panel project
+      operationId: getPanelProjectLatestRun
+      parameters:
+      - name: project_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Project Key
+      responses:
+        '200':
+          description: Latest run data for the panel project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PanelProjectLatestRunResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /healthz:
     get:
       tags:
@@ -88,6 +153,15 @@ components:
       - required_files
       - capabilities
       title: CapabilityCatalog
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
     HealthResponse:
       properties:
         status:
@@ -112,3 +186,487 @@ components:
       - service
       - active_focus
       title: HealthResponse
+    PanelCheckerResultItem:
+      properties:
+        checker:
+          type: string
+          enum:
+          - build
+          - lint
+          - typecheck
+          - test
+          - coverage
+          title: Checker
+          description: Checker name
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - skip
+          title: Status
+          description: Checker execution status
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detail
+          description: Checker output summary
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Checker duration in seconds
+      type: object
+      required:
+      - checker
+      - status
+      - detail
+      - duration_sec
+      title: PanelCheckerResultItem
+    PanelLatestRunDetail:
+      properties:
+        run_key:
+          type: string
+          title: Run Key
+          description: Run unique key
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: Latest run source
+        git_ref:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Ref
+          description: Git ref for the latest run
+        git_sha:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Git Sha
+          description: Git SHA for the latest run
+        triggered_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Triggered By
+          description: Latest run trigger actor
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: Latest run start time in ISO 8601 UTC
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: Latest run finish time in ISO 8601 UTC
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Latest run duration in seconds
+        strict_mode:
+          type: boolean
+          title: Strict Mode
+          description: Whether the latest run used strict mode
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Latest project run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Latest project block reason
+      type: object
+      required:
+      - run_key
+      - source
+      - git_ref
+      - git_sha
+      - triggered_by
+      - started_at
+      - finished_at
+      - duration_sec
+      - strict_mode
+      - status
+      - block_reason
+      title: PanelLatestRunDetail
+    PanelModuleDetailItem:
+      properties:
+        module_name:
+          type: string
+          title: Module Name
+          description: Module name
+        stack:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stack
+          description: Module stack description
+        language:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Language
+          description: Primary module language
+        status:
+          type: string
+          enum:
+          - pass
+          - fail
+          - timeout
+          - blocked
+          - not-run
+          title: Status
+          description: Current module status
+        coverage_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Pct
+          description: Current module coverage percentage
+        baseline_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Baseline Pct
+          description: Current module baseline coverage percentage
+        coverage_gate_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Gate Pct
+          description: Current module coverage gate percentage
+        coverage_delta_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Delta Pct
+          description: Current module coverage delta percentage
+        coverage_parser:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Coverage Parser
+          description: Coverage parser identifier
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Current module block reason
+        checker_results:
+          items:
+            $ref: '#/components/schemas/PanelCheckerResultItem'
+          type: array
+          title: Checker Results
+          description: Checker results for the latest run
+      type: object
+      required:
+      - module_name
+      - stack
+      - language
+      - status
+      - coverage_pct
+      - baseline_pct
+      - coverage_gate_pct
+      - coverage_delta_pct
+      - coverage_parser
+      - block_reason
+      - checker_results
+      title: PanelModuleDetailItem
+    PanelProjectDetailPayload:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Project unique key
+        project_name:
+          type: string
+          title: Project Name
+          description: Project display name
+        repo_path:
+          type: string
+          title: Repo Path
+          description: Repository path
+        preset:
+          type: string
+          title: Preset
+          description: CLI detected preset
+        onboarding_status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - blocked
+          - custom-needed
+          title: Onboarding Status
+          description: Project onboarding status
+        latest_run:
+          $ref: '#/components/schemas/PanelLatestRunDetail'
+          description: Latest project run detail
+        modules:
+          items:
+            $ref: '#/components/schemas/PanelModuleDetailItem'
+          type: array
+          title: Modules
+          description: Project module details
+      type: object
+      required:
+      - project_key
+      - project_name
+      - repo_path
+      - preset
+      - onboarding_status
+      - latest_run
+      - modules
+      title: PanelProjectDetailPayload
+    PanelProjectDetailResponse:
+      properties:
+        generated_at:
+          type: string
+          title: Generated At
+          description: Response generation time in ISO 8601 UTC
+        project:
+          $ref: '#/components/schemas/PanelProjectDetailPayload'
+          description: Panel project detail record
+      type: object
+      required:
+      - generated_at
+      - project
+      title: PanelProjectDetailResponse
+    PanelProjectItem:
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          description: Project unique key
+        project_name:
+          type: string
+          title: Project Name
+          description: Project display name
+        repo_path:
+          type: string
+          title: Repo Path
+          description: Repository path
+        preset:
+          type: string
+          title: Preset
+          description: CLI detected preset
+        onboarding_status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - blocked
+          - custom-needed
+          title: Onboarding Status
+          description: Project onboarding status
+        module_count:
+          type: integer
+          title: Module Count
+          description: Derived module count for the project
+        health:
+          type: string
+          enum:
+          - healthy
+          - warning
+          - failing
+          - unknown
+          title: Health
+          description: Derived project health from the latest run status
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: Latest run source
+        triggered_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Triggered By
+          description: Latest run trigger actor
+        status:
+          anyOf:
+          - type: string
+            enum:
+            - pass
+            - fail
+            - timeout
+            - blocked
+            - not-run
+          - type: 'null'
+          title: Status
+          description: Latest project run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Latest project block reason
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: Latest run start time in ISO 8601 UTC
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: Latest run finish time in ISO 8601 UTC
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Latest run duration in seconds
+      type: object
+      required:
+      - project_key
+      - project_name
+      - repo_path
+      - preset
+      - onboarding_status
+      - module_count
+      - health
+      - source
+      - triggered_by
+      - status
+      - block_reason
+      - started_at
+      - finished_at
+      - duration_sec
+      title: PanelProjectItem
+    PanelProjectLatestRunResponse:
+      properties:
+        generated_at:
+          type: string
+          title: Generated At
+          description: Response generation time in ISO 8601 UTC
+        project_key:
+          type: string
+          title: Project Key
+          description: Project unique key
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: Latest run source
+        triggered_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Triggered By
+          description: Latest run trigger actor
+        status:
+          anyOf:
+          - type: string
+            enum:
+            - pass
+            - fail
+            - timeout
+            - blocked
+            - not-run
+          - type: 'null'
+          title: Status
+          description: Latest project run status
+        block_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Block Reason
+          description: Latest project block reason
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: Latest run start time in ISO 8601 UTC
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: Latest run finish time in ISO 8601 UTC
+        duration_sec:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Duration Sec
+          description: Latest run duration in seconds
+      type: object
+      required:
+      - generated_at
+      - project_key
+      - source
+      - triggered_by
+      - status
+      - block_reason
+      - started_at
+      - finished_at
+      - duration_sec
+      title: PanelProjectLatestRunResponse
+    PanelProjectsResponse:
+      properties:
+        generated_at:
+          type: string
+          title: Generated At
+          description: Response generation time in ISO 8601 UTC
+        projects:
+          items:
+            $ref: '#/components/schemas/PanelProjectItem'
+          type: array
+          title: Projects
+          description: Supported panel projects
+      type: object
+      required:
+      - generated_at
+      - projects
+      title: PanelProjectsResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
