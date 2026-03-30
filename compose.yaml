@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: agentshield-postgres
+    environment:
+      POSTGRES_USER: agentshield
+      POSTGRES_PASSWORD: agentshield
+      POSTGRES_DB: agentshield_panel_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - agentshield_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentshield -d agentshield_panel_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/api
+    container_name: agentshield-api
+    environment:
+      POSTGRES_DSN: postgresql+psycopg://agentshield:agentshield@postgres:5432/agentshield_panel_dev
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic -c alembic.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      ]
+
+  pgadmin:
+    image: dpage/pgadmin4:9
+    container_name: agentshield-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: agentshield
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./docker/pgadmin/pgpass:/pgpass:ro
+      - ./docker/pgadmin/start-pgadmin.sh:/start-pgadmin.sh:ro
+    entrypoint: ["/bin/sh", "/start-pgadmin.sh"]
+    depends_on:
+      postgres:
+        condition: service_started
+
+volumes:
+  agentshield_pgdata:

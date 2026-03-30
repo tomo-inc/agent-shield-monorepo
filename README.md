@@ -117,6 +117,33 @@ pnpm dev:web
 
 Frontend runs at: http://localhost:3000
 
+## Docker Setup
+
+From the repository root, you can start the local panel stack with one command:
+
+```bash
+docker compose up --build -d
+```
+
+This starts:
+
+- PostgreSQL on `127.0.0.1:55432`
+- API on `http://127.0.0.1:8000`
+- pgAdmin on `http://127.0.0.1:5050`
+
+Useful follow-up commands:
+
+```bash
+docker compose ps
+docker compose logs api --tail=80
+docker compose down
+```
+
+pgAdmin default login:
+
+- Email: `admin@example.com`
+- Password: `agentshield`
+
 ---
 
 ## Available Commands
