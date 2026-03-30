@@ -4,7 +4,13 @@
       "Bash(npx tsc:*)",
       "Bash(pnpm dev:web)",
       "Bash(find /Users/daweima/file/tomo/agent-shield-monorepo -type f -name *.tsx)",
-      "Bash(python -:*)"
+      "Bash(python -:*)",
+      "Bash(docker compose:*)",
+      "Bash(printf '\\\\n---\\\\n')",
+      "Bash(python3 -:*)",
+      "Bash(API_BASE_URL=http://127.0.0.1:8000 pnpm --dir \"/Users/daweima/file/tomo/agent-shield-monorepo/apps/web\" dev --hostname 127.0.0.1 --port 3101)",
+      "Bash(curl -I http://127.0.0.1:3101/panel)",
+      "Bash(env)"
     ]
   }
 }
