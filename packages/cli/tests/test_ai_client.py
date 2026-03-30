@@ -49,8 +49,12 @@ def test_run_scan_parses_openai_compatible_response(monkeypatch) -> None:
         assert "POST" in command
         assert "https://example.com/v1/chat/completions" in command
         assert input is not None
-        assert "Identify logical business modules, not individual source files" in input
+        assert "Use logical business modules, not individual source files" in input
         assert "Do not use a single source file path like `src/bin/merchant.rs`" in input
+        assert "For every business module, recommend commands for these check kinds in this order when possible" in input
+        assert "`build`, `typecheck`, `test`, `coverage`, `lint`" in input
+        assert "Set each recommended check `id` to one of those exact values." in input
+        assert "You are AgentShield Analyzer" not in input
         assert text is True
         assert capture_output is True
         assert check is False
