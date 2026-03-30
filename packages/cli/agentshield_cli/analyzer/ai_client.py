@@ -53,6 +53,13 @@ def _build_prompt(snapshot: RepoSnapshot) -> str:
     return (
         "Analyze this repository snapshot for AgentShield QA automation.\n"
         "Return exactly one JSON object that matches the provided schema.\n"
+        "Identify logical business modules, not individual source files, whenever possible.\n"
+        "Prefer directory or package-level module paths such as `apps/api`, `packages/cli`, "
+        "`src/merchant`, or `src/payment_api`.\n"
+        "Do not use a single source file path like `src/bin/merchant.rs` as a module when the "
+        "surrounding directory or executable target represents a larger business module.\n"
+        "For Rust repositories, prefer `src/<module>` directories, crate/workspace members, or "
+        "binary target names as modules over `src/bin/*.rs` file paths.\n"
         "Recommend check commands that are realistic for the detected stack.\n"
         "Prefer repo-relative paths and existing package-manager commands.\n"
         "Do not include markdown fences or commentary.\n\n"

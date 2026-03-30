@@ -21,6 +21,7 @@ IGNORED_DIRS = {
 
 ROOT_FILES = [
     "AGENTS.md",
+    "Cargo.toml",
     "README.md",
     "package.json",
     "pnpm-workspace.yaml",

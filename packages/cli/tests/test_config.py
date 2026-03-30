@@ -73,3 +73,25 @@ def test_load_config_reads_dotenv_local(tmp_path: Path, monkeypatch) -> None:
 
     assert settings.base_url == "https://api.example.com/v1"
     assert settings.api_key == "dotenv-secret"
+
+
+def test_load_config_migrates_notify_failure_only_to_always(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / ".agentshield" / "config.yaml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                "notify:",
+                "  enabled: true",
+                "  webhook_url: https://example.com/hook",
+                "  send_on:",
+                "    - failure",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    config, _, _ = load_config(config_path)
+
+    assert config.notify.send_on == ["always"]

@@ -6,6 +6,11 @@ from typing import Literal
 
 
 CoverageParser = Literal["coverage.py-json", "istanbul-summary"]
+DEFAULT_LINE_COVERAGE_GATE = 100.0
+
+
+def coverage_gate_message(metric: str, value: float, threshold: float) -> str:
+    return f"Coverage for {metric} is {value:.1f}%, below the required {threshold:.1f}%."
 
 
 def parse_coverage_metrics(parser: CoverageParser, coverage_file: Path) -> dict[str, float]:

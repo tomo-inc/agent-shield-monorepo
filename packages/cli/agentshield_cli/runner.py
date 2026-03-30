@@ -2,16 +2,24 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+import re
 import subprocess
 import time
 from collections import OrderedDict
 from pathlib import Path
+from typing import Callable
 
 from agentshield_cli.baseline import apply_baseline_gates
 from agentshield_cli.config import AgentShieldConfig, CheckConfig
-from agentshield_cli.coverage import parse_coverage_metrics
+from agentshield_cli.coverage import (
+    DEFAULT_LINE_COVERAGE_GATE,
+    coverage_gate_message,
+    parse_coverage_metrics,
+)
 from agentshield_cli.models import CheckResult, RunReport
 from agentshield_cli.notifier import send_webhook
+
+REQUIRED_CHECK_KINDS = ("build", "lint", "typecheck", "test", "coverage")
 
 
 def _normalize_output(value: str | bytes) -> str:
@@ -33,8 +41,61 @@ def _group_checks_by_module(checks: list[CheckConfig]) -> OrderedDict[str, list[
     return grouped
 
 
-def _run_module_checks(checks: list[CheckConfig], project_root: Path) -> list[CheckResult]:
-    return [run_single_check(check, project_root) for check in checks]
+def _slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+
+def _missing_required_results(module_name: str, checks: list[CheckConfig]) -> list[CheckResult]:
+    existing_kinds = {check.kind for check in checks}
+    missing_results: list[CheckResult] = []
+    for kind in REQUIRED_CHECK_KINDS:
+        if kind in existing_kinds:
+            continue
+        missing_results.append(
+            CheckResult(
+                id=f"{_slug(module_name)}-{kind}-missing",
+                label=f"{module_name} - {kind}",
+                module=module_name,
+                kind=kind,
+                command="(missing configuration)",
+                status="fail",
+                exit_code=2,
+                duration_sec=0.0,
+                metrics={},
+                stdout_tail=[],
+                stderr_tail=[
+                    (
+                        f"AgentShield did not generate a `{kind}` step for module `{module_name}` "
+                        "during setup. This module cannot pass until that step is added. "
+                        "Re-run `agentshield init --yes` to scan again, or add the command manually."
+                    )
+                ],
+            )
+        )
+    return missing_results
+
+
+def _emit_progress(
+    result: CheckResult,
+    progress_callback: Callable[[CheckResult], None] | None,
+) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(result)
+
+
+def _run_module_checks(
+    checks: list[CheckConfig],
+    project_root: Path,
+    *,
+    progress_callback: Callable[[CheckResult], None] | None = None,
+) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    for check in checks:
+        result = run_single_check(check, project_root)
+        results.append(result)
+        _emit_progress(result, progress_callback)
+    return results
 
 
 def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
@@ -43,6 +104,7 @@ def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
     cwd = project_root / check.cwd if check.cwd else project_root
     module_name = check.module
     coverage_path = cwd / check.coverage_file if check.coverage_file else None
+    gate_target: float | None = None
     if coverage_path is not None:
         coverage_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -76,6 +138,13 @@ def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
         if status == "pass" and check.coverage_parser and coverage_path is not None:
             try:
                 metrics = parse_coverage_metrics(check.coverage_parser, coverage_path)
+                gate_target = DEFAULT_LINE_COVERAGE_GATE
+                line_coverage = metrics.get("line")
+                if line_coverage is not None and line_coverage + 1e-9 < DEFAULT_LINE_COVERAGE_GATE:
+                    status = "fail"
+                    stderr_tail.append(
+                        coverage_gate_message("line", line_coverage, DEFAULT_LINE_COVERAGE_GATE)
+                    )
             except (FileNotFoundError, ValueError) as exc:
                 status = "fail"
                 stderr_tail.append(str(exc))
@@ -89,6 +158,7 @@ def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
             exit_code=completed.returncode,
             duration_sec=round(time.monotonic() - started, 2),
             metrics=metrics,
+            gate_target=gate_target,
             stdout_tail=_tail_lines(completed.stdout),
             stderr_tail=stderr_tail,
         )
@@ -105,6 +175,35 @@ def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
             metrics={},
             stdout_tail=_tail_lines(_normalize_output(exc.stdout or "")),
             stderr_tail=_tail_lines(_normalize_output(exc.stderr or "")),
+        )
+    except FileNotFoundError as exc:
+        missing_command = exc.filename or command_display or check.id
+        return CheckResult(
+            id=check.id,
+            label=check.label,
+            module=module_name,
+            kind=check.kind,
+            command=command_display,
+            status="fail",
+            exit_code=127,
+            duration_sec=round(time.monotonic() - started, 2),
+            metrics={},
+            stdout_tail=[],
+            stderr_tail=[f"command not found: {missing_command}"],
+        )
+    except ValueError as exc:
+        return CheckResult(
+            id=check.id,
+            label=check.label,
+            module=module_name,
+            kind=check.kind,
+            command=command_display,
+            status="fail",
+            exit_code=2,
+            duration_sec=round(time.monotonic() - started, 2),
+            metrics={},
+            stdout_tail=[],
+            stderr_tail=[str(exc)],
         )
 
 
@@ -129,6 +228,7 @@ def run_checks(
     run_dir: Path,
     baseline_dir: Path | None = None,
     send_notifications: bool = True,
+    progress_callback: Callable[[CheckResult], None] | None = None,
 ) -> tuple[RunReport, bool]:
     project_root = config.project_root
     enabled_checks = [check for check in config.checks if check.enabled]
@@ -136,13 +236,23 @@ def run_checks(
         grouped_checks = _group_checks_by_module(enabled_checks)
         max_workers = min(len(grouped_checks), 8)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(_run_module_checks, checks, project_root)
-                for checks in grouped_checks.values()
-            ]
+            futures = {
+                module_name: executor.submit(
+                    _run_module_checks,
+                    checks,
+                    project_root,
+                    progress_callback=progress_callback,
+                )
+                for module_name, checks in grouped_checks.items()
+            }
             results = []
-            for future in futures:
+            for module_name, future in futures.items():
+                module_checks = grouped_checks[module_name]
                 results.extend(future.result())
+                missing_results = _missing_required_results(module_name, module_checks)
+                results.extend(missing_results)
+                for result in missing_results:
+                    _emit_progress(result, progress_callback)
     else:
         results = []
     status = "pass" if all(result.status == "pass" for result in results) else "fail"

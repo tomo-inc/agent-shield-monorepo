@@ -49,6 +49,8 @@ def test_run_scan_parses_openai_compatible_response(monkeypatch) -> None:
         assert "POST" in command
         assert "https://example.com/v1/chat/completions" in command
         assert input is not None
+        assert "Identify logical business modules, not individual source files" in input
+        assert "Do not use a single source file path like `src/bin/merchant.rs`" in input
         assert text is True
         assert capture_output is True
         assert check is False
