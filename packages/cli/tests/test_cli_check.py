@@ -10,7 +10,7 @@ from agentshield_cli.cli import main
 def _full_check_yaml(module: str) -> str:
     coverage_program = (
         "from pathlib import Path; "
-        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 88.8}}', encoding='utf-8')"
+        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 100.0}}', encoding='utf-8')"
     )
     payload = {
         "version": 1,

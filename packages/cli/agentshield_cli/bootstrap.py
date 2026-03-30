@@ -20,7 +20,7 @@ def _slug(value: str) -> str:
 
 STANDARD_KINDS = ("build", "lint", "typecheck", "test", "coverage")
 CheckKind = Literal["build", "lint", "typecheck", "test", "coverage", "custom"]
-CoverageParserKind = Literal["coverage.py-json", "istanbul-summary"]
+CoverageParserKind = Literal["coverage.py-json", "istanbul-summary", "jacoco-xml"]
 TEST_ONLY_PATH_MARKERS = {
     "test",
     "tests",
@@ -137,6 +137,9 @@ def _infer_coverage_settings(
         if reports_dir:
             reports_dir = reports_dir.rstrip("/\\")
             return "istanbul-summary", f"{reports_dir}/coverage-summary.json"
+
+    if any("jacoco:report" in token for token in argv):
+        return "jacoco-xml", "."
 
     return None, None
 
