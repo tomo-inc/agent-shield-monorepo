@@ -51,18 +51,21 @@ def _build_prompt(snapshot: RepoSnapshot) -> str:
     schema = json.dumps(ScanReport.model_json_schema(), indent=2)
     payload = json.dumps(snapshot.model_dump(mode="json"), indent=2)
     return (
-        "Analyze this repository snapshot for AgentShield QA automation.\n"
-        "Return exactly one JSON object that matches the provided schema.\n"
-        "Identify logical business modules, not individual source files, whenever possible.\n"
-        "Prefer directory or package-level module paths such as `apps/api`, `packages/cli`, "
-        "`src/merchant`, or `src/payment_api`.\n"
+        "Read this repository snapshot and return exactly one JSON object that matches the schema.\n"
+        "Find the business modules in the scanned project. Do not list test-only modules.\n"
+        "Use logical business modules, not individual source files, whenever possible.\n"
+        "Prefer module paths such as `apps/api`, `packages/cli`, `src/merchant`, or `src/payment_api`.\n"
         "Do not use a single source file path like `src/bin/merchant.rs` as a module when the "
-        "surrounding directory or executable target represents a larger business module.\n"
-        "For Rust repositories, prefer `src/<module>` directories, crate/workspace members, or "
+        "surrounding directory, package, crate, or binary target represents the real module.\n"
+        "For Rust repositories, prefer crate/workspace members, `src/<module>` directories, or "
         "binary target names as modules over `src/bin/*.rs` file paths.\n"
-        "Recommend check commands that are realistic for the detected stack.\n"
-        "Prefer repo-relative paths and existing package-manager commands.\n"
-        "Do not include markdown fences or commentary.\n\n"
+        "For every business module, recommend commands for these check kinds in this order when possible: "
+        "`build`, `typecheck`, `test`, `coverage`, `lint`.\n"
+        "Set each recommended check `id` to one of those exact values.\n"
+        "Each command must be realistic for the scanned project, prefer existing scripts and package-manager commands, "
+        "and use repo-relative `cwd` when needed.\n"
+        "If one of the five check kinds truly cannot be determined from the repository snapshot, omit it instead of inventing a fake command.\n"
+        "Do not include markdown fences or any explanation outside the JSON object.\n\n"
         f"Target schema:\n{schema}\n\n"
         f"Repository snapshot:\n{payload}\n"
     )
@@ -127,10 +130,7 @@ def run_scan(snapshot: RepoSnapshot, llm_config: LLMConfig) -> ScanReport:
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "You are AgentShield Analyzer. "
-                    "You inspect repository snapshots and return valid JSON only."
-                ),
+                "content": "Return valid JSON only. No markdown fences. No extra commentary.",
             },
             {
                 "role": "user",
