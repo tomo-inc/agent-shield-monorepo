@@ -21,12 +21,17 @@ def test_build_tree_skips_runtime_dirs(tmp_path: Path) -> None:
 def test_collect_repo_snapshot_reads_key_files(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text("# Demo\n", encoding="utf-8")
     (tmp_path / "Cargo.toml").write_text("[package]\nname='demo'\n", encoding="utf-8")
+    (tmp_path / "pom.xml").write_text("<project></project>\n", encoding="utf-8")
     (tmp_path / "apps" / "web").mkdir(parents=True)
     (tmp_path / "apps" / "web" / "package.json").write_text("{\"name\":\"web\"}", encoding="utf-8")
+    (tmp_path / "apps" / "api").mkdir(parents=True)
+    (tmp_path / "apps" / "api" / "pom.xml").write_text("<project></project>\n", encoding="utf-8")
 
     snapshot = collect_repo_snapshot(tmp_path)
 
     paths = [sample.path for sample in snapshot.files]
     assert "README.md" in paths
     assert "Cargo.toml" in paths
+    assert "pom.xml" in paths
+    assert "apps/api/pom.xml" in paths
     assert "apps/web/package.json" in paths

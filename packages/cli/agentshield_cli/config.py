@@ -31,7 +31,7 @@ class CheckConfig(BaseModel):
     argv: list[str] | None = None
     run: str | None = None
     cwd: str | None = None
-    coverage_parser: Literal["coverage.py-json", "istanbul-summary"] | None = None
+    coverage_parser: Literal["coverage.py-json", "istanbul-summary", "jacoco-xml"] | None = None
     coverage_file: str | None = None
     timeout_sec: int = 1200
     enabled: bool = True

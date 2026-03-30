@@ -23,6 +23,7 @@ ROOT_FILES = [
     "AGENTS.md",
     "Cargo.toml",
     "README.md",
+    "pom.xml",
     "package.json",
     "pnpm-workspace.yaml",
     "pyproject.toml",
@@ -82,8 +83,10 @@ def collect_file_samples(root: Path) -> list[FileSample]:
     for pattern in (
         ".github/workflows/*.yml",
         "apps/*/package.json",
+        "apps/*/pom.xml",
         "apps/*/pyproject.toml",
         "packages/*/package.json",
+        "packages/*/pom.xml",
         "packages/*/pyproject.toml",
     ):
         for path in sorted(root.glob(pattern)):

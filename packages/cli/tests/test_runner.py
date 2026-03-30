@@ -9,7 +9,7 @@ from agentshield_cli.runner import run_checks
 def _passing_module_checks() -> list[CheckConfig]:
     coverage_program = (
         "from pathlib import Path; "
-        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 88.8}}', encoding='utf-8')"
+        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 100.0}}', encoding='utf-8')"
     )
     ok = ["python", "-c", "print('ok')"]
     return [

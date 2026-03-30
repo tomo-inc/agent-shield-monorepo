@@ -12,7 +12,7 @@ from agentshield_cli.models import ScanModuleSuggestion, ScanReport
 def _full_module_checks(module: str) -> list[CheckConfig]:
     coverage_program = (
         "from pathlib import Path; "
-        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 88.8}}', encoding='utf-8')"
+        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 100.0}}', encoding='utf-8')"
     )
     return [
         CheckConfig(
