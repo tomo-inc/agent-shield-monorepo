@@ -70,7 +70,7 @@ class LLMConfig(BaseModel):
 
     enabled: bool = True
     provider: str = "openai-compatible"
-    model: str = "gpt-4.1-mini"
+    model: str = "claude-haiku-4-5"
     base_url: str | None = DEFAULT_LLM_BASE_URL
     base_url_env: str | None = "AGENTSHIELD_LLM_BASE_URL"
     api_key: str | None = DEFAULT_LLM_API_KEY
