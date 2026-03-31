@@ -46,4 +46,8 @@ jobs:
         run: pnpm run ci
 
       - name: AgentShield check
-        run: uv run --project packages/cli agentshield check --no-init
+        run: |
+          if [ ! -f .agentshield/config.yaml ]; then
+            uv run --project packages/cli agentshield init --yes
+          fi
+          uv run --project packages/cli agentshield check --no-init
