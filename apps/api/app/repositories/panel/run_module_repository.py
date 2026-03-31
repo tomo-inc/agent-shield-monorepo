@@ -87,4 +87,5 @@ class RunModuleRepository:
                 )
                 .order_by(PanelRunModule.module_id.asc())
             ).scalars()
+            if value is not None
         ]

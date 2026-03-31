@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from agentshield_cli.config import AgentShieldConfig, CheckConfig, NotifyConfig, ProjectConfig
@@ -11,7 +12,7 @@ def _passing_module_checks() -> list[CheckConfig]:
         "from pathlib import Path; "
         "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 100.0}}', encoding='utf-8')"
     )
-    ok = ["python", "-c", "print('ok')"]
+    ok = [sys.executable, "-c", "print('ok')"]
     return [
         CheckConfig(id="build", label="mod - build", module="mod", kind="build", argv=ok),
         CheckConfig(id="lint", label="mod - lint", module="mod", kind="lint", argv=ok),
@@ -22,7 +23,7 @@ def _passing_module_checks() -> list[CheckConfig]:
             label="mod - coverage",
             module="mod",
             kind="coverage",
-            argv=["python", "-c", coverage_program],
+            argv=[sys.executable, "-c", coverage_program],
             coverage_parser="coverage.py-json",
             coverage_file="coverage.json",
         ),
@@ -149,7 +150,7 @@ def test_run_checks_fails_when_required_checks_are_missing(tmp_path: Path) -> No
                 label="merchant - test",
                 module="merchant",
                 kind="test",
-                argv=["python", "-c", "print('ok')"],
+                argv=[sys.executable, "-c", "print('ok')"],
             )
         ],
         notify=NotifyConfig(enabled=False),
