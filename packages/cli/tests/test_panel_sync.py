@@ -71,8 +71,8 @@ def test_build_project_register_payload_only_uses_accurate_fields(tmp_path: Path
     payload = build_project_register_payload(_config(tmp_path), "ready")
 
     assert payload["project_key"] == "demo"
-    assert payload["preset"] is None
-    assert payload["commands"] is None
+    assert payload["preset"] == "custom"
+    assert "commands" not in payload
     assert payload["modules"] == [{"module_name": "apps/api", "stack": None, "language": None}]
 
 

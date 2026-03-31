@@ -1,0 +1,39 @@
+{
+  "module": "packages",
+  "created_at": "2026-03-30T08:45:58.524060+00:00",
+  "source_created_at": "2026-03-30T08:45:58.076418+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T08-45-58.076418+00-00.json",
+  "thresholds": {},
+  "checks": [
+    {
+      "id": "packages-lint",
+      "label": "packages - lint",
+      "module": "packages",
+      "kind": "lint",
+      "command": "pnpm run lint",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "packages-typecheck",
+      "label": "packages - typecheck",
+      "module": "packages",
+      "kind": "typecheck",
+      "command": "pnpm run typecheck",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "packages-test",
+      "label": "packages - test",
+      "module": "packages",
+      "kind": "test",
+      "command": "pnpm run test:unit",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    }
+  ]
+}

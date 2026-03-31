@@ -10,7 +10,16 @@
       "Bash(python3 -:*)",
       "Bash(API_BASE_URL=http://127.0.0.1:8000 pnpm --dir \"/Users/daweima/file/tomo/agent-shield-monorepo/apps/web\" dev --hostname 127.0.0.1 --port 3101)",
       "Bash(curl -I http://127.0.0.1:3101/panel)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(curl -s \"http://127.0.0.1:8000/health\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/v1/panel/projects/agentpay-sdk-internal\")",
+      "Bash(UV_CACHE_DIR=/tmp/agentshield-uv-cache AGENTSHIELD_PANEL_BASE_URL=http://127.0.0.1:8000 uv run --project \"/Users/daweima/file/tomo/agent-shield-monorepo/packages/cli\" --directory \"/Users/daweima/file/tomo/agentpay-sdk-internal\" agentshield init --yes)",
+      "Read(//Users/daweima/file/tomo/agentpay-sdk-internal/**)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\(''''scripts'''',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(pnpm test:web)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

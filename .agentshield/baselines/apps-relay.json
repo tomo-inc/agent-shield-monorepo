@@ -1,0 +1,39 @@
+{
+  "module": "apps/relay",
+  "created_at": "2026-03-30T08:45:58.522452+00:00",
+  "source_created_at": "2026-03-30T08:45:58.076418+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T08-45-58.076418+00-00.json",
+  "thresholds": {},
+  "checks": [
+    {
+      "id": "apps-relay-lint",
+      "label": "apps/relay - lint",
+      "module": "apps/relay",
+      "kind": "lint",
+      "command": "pnpm run lint",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "apps-relay-typecheck",
+      "label": "apps/relay - typecheck",
+      "module": "apps/relay",
+      "kind": "typecheck",
+      "command": "pnpm run typecheck",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "apps-relay-test",
+      "label": "apps/relay - test",
+      "module": "apps/relay",
+      "kind": "test",
+      "command": "pnpm run test:unit",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    }
+  ]
+}

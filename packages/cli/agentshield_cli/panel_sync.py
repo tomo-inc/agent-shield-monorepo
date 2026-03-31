@@ -80,12 +80,8 @@ def build_project_register_payload(config: AgentShieldConfig, onboarding_status:
         "project_key": config.project.name,
         "project_name": config.project.name,
         "repo_path": str(config.project_root),
-        "preset": None,
+        "preset": "custom",
         "onboarding_status": onboarding_status,
-        "commands": None,
-        "thresholds": None,
-        "timeouts": None,
-        "notify": None,
         "modules": modules,
     }
 

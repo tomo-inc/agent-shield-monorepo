@@ -1,0 +1,59 @@
+{
+  "module": "root",
+  "created_at": "2026-03-30T10:59:20.941318+00:00",
+  "source_created_at": "2026-03-30T10:59:20.358394+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T10-59-20.358394+00-00.json",
+  "thresholds": {},
+  "checks": [
+    {
+      "id": "root-build",
+      "label": "root - build",
+      "module": "root",
+      "kind": "build",
+      "command": "pnpm exec tsup --config tsup.config.ts",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "root-lint",
+      "label": "root - lint",
+      "module": "root",
+      "kind": "lint",
+      "command": "pnpm exec biome check src test scripts package.json tsconfig.json tsup.config.ts turbo.json",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "root-typecheck",
+      "label": "root - typecheck",
+      "module": "root",
+      "kind": "typecheck",
+      "command": "pnpm exec tsc --noEmit",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "root-test",
+      "label": "root - test",
+      "module": "root",
+      "kind": "test",
+      "command": "node ./scripts/run-ts-tests.mjs",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "root-coverage",
+      "label": "root - coverage",
+      "module": "root",
+      "kind": "coverage",
+      "command": "pnpm exec c8 --all --reporter=json-summary --reporter=text --report-dir=.qa-agent/generated/coverage/root node ./scripts/run-ts-tests.mjs",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    }
+  ]
+}

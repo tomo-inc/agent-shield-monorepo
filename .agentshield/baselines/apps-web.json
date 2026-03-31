@@ -1,11 +1,9 @@
 {
   "module": "apps/web",
-  "created_at": "2026-03-30T06:36:03.902928+00:00",
-  "source_created_at": "2026-03-30T06:36:03.900553+00:00",
-  "source_run_file": ".qa-agent/runs/2026-03-30T06-36-03.900553+00-00.json",
-  "thresholds": {
-    "line": 6.1
-  },
+  "created_at": "2026-03-30T08:45:58.523244+00:00",
+  "source_created_at": "2026-03-30T08:45:58.076418+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T08-45-58.076418+00-00.json",
+  "thresholds": {},
   "checks": [
     {
       "id": "apps-web-build",
@@ -13,8 +11,8 @@
       "module": "apps/web",
       "kind": "build",
       "command": "pnpm build",
-      "status": "pass",
-      "exit_code": 0,
+      "status": "fail",
+      "exit_code": 1,
       "metrics": {}
     },
     {
@@ -22,9 +20,9 @@
       "label": "apps/web - lint",
       "module": "apps/web",
       "kind": "lint",
-      "command": "pnpm lint",
-      "status": "pass",
-      "exit_code": 0,
+      "command": "pnpm run lint",
+      "status": "fail",
+      "exit_code": 1,
       "metrics": {}
     },
     {
@@ -32,9 +30,9 @@
       "label": "apps/web - typecheck",
       "module": "apps/web",
       "kind": "typecheck",
-      "command": "pnpm typecheck",
-      "status": "pass",
-      "exit_code": 0,
+      "command": "pnpm run typecheck",
+      "status": "fail",
+      "exit_code": 1,
       "metrics": {}
     },
     {
@@ -42,9 +40,9 @@
       "label": "apps/web - test",
       "module": "apps/web",
       "kind": "test",
-      "command": "pnpm test",
-      "status": "pass",
-      "exit_code": 0,
+      "command": "pnpm run test:unit",
+      "status": "fail",
+      "exit_code": 1,
       "metrics": {}
     },
     {
@@ -53,11 +51,9 @@
       "module": "apps/web",
       "kind": "coverage",
       "command": "pnpm exec vitest run --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=json-summary --coverage.reporter=text --coverage.reportsDirectory=../../.qa-agent/generated/coverage/apps-web",
-      "status": "pass",
-      "exit_code": 0,
-      "metrics": {
-        "line": 6.1
-      }
+      "status": "fail",
+      "exit_code": 254,
+      "metrics": {}
     }
   ]
 }

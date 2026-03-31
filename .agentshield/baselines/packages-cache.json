@@ -1,0 +1,63 @@
+{
+  "module": "packages/cache",
+  "created_at": "2026-03-30T10:59:20.943786+00:00",
+  "source_created_at": "2026-03-30T10:59:20.358394+00:00",
+  "source_run_file": ".qa-agent/runs/2026-03-30T10-59-20.358394+00-00.json",
+  "thresholds": {
+    "line": 69.6
+  },
+  "checks": [
+    {
+      "id": "packages-cache-build",
+      "label": "packages/cache - build",
+      "module": "packages/cache",
+      "kind": "build",
+      "command": "pnpm run build",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cache-lint",
+      "label": "packages/cache - lint",
+      "module": "packages/cache",
+      "kind": "lint",
+      "command": "pnpm run lint",
+      "status": "fail",
+      "exit_code": 1,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cache-typecheck",
+      "label": "packages/cache - typecheck",
+      "module": "packages/cache",
+      "kind": "typecheck",
+      "command": "pnpm run typecheck",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cache-test",
+      "label": "packages/cache - test",
+      "module": "packages/cache",
+      "kind": "test",
+      "command": "pnpm run test:unit",
+      "status": "pass",
+      "exit_code": 0,
+      "metrics": {}
+    },
+    {
+      "id": "packages-cache-coverage",
+      "label": "packages/cache - coverage",
+      "module": "packages/cache",
+      "kind": "coverage",
+      "command": "pnpm exec vitest run --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=json-summary --coverage.reporter=text --coverage.reportsDirectory=../../.qa-agent/generated/coverage/packages-cache",
+      "status": "fail",
+      "exit_code": 0,
+      "metrics": {
+        "line": 69.6
+      }
+    }
+  ]
+}
