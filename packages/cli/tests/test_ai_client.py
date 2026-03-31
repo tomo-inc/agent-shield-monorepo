@@ -74,4 +74,4 @@ def test_run_scan_parses_openai_compatible_response(monkeypatch) -> None:
 
     assert report.project_type == "monorepo"
     assert report.modules[0].path == "apps/api"
-    assert report.llm_model == "gpt-4.1-mini"
+    assert report.llm_model == "claude-haiku-4-5"
