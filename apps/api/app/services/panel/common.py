@@ -107,7 +107,18 @@ def build_latest_run_payload(run: PanelRun, modules: list[PanelRunModuleDto]) ->
     )
 
 
-def build_overview_project(project, module_count: int, latest_run: PanelRun | None) -> PanelOverviewProject:
+def calculate_coverage_average(coverage_values: list[float]) -> float | None:
+    if not coverage_values:
+        return None
+    return sum(coverage_values) / len(coverage_values)
+
+
+def build_overview_project(
+    project,
+    module_count: int,
+    latest_run: PanelRun | None,
+    coverage_avg_pct: float | None,
+) -> PanelOverviewProject:
     status: PanelRunStatus = as_run_status(latest_run.status) if latest_run is not None else "not-run"
     return PanelOverviewProject(
         project_key=project.project_key,
@@ -119,6 +130,7 @@ def build_overview_project(project, module_count: int, latest_run: PanelRun | No
         check_all=status,
         last_run_at=latest_run.finished_at if latest_run is not None else None,
         block_reason=latest_run.block_reason if latest_run is not None else None,
+        coverage_avg_pct=coverage_avg_pct,
     )
 
 

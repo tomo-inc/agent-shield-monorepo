@@ -1,50 +1,45 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 type PanelHeroProps = {
   generatedAt: string;
 };
 
 export function PanelHero({ generatedAt }: PanelHeroProps) {
+  const router = useRouter();
+
   return (
     <section
+      className="panel-card"
       style={{
-        background:
-          "linear-gradient(135deg, rgba(20, 33, 61, 0.96) 0%, rgba(34, 56, 92, 0.96) 52%, rgba(231, 111, 81, 0.92) 100%)",
-        border: "1px solid rgba(20, 33, 61, 0.12)",
-        borderRadius: "16px",
-        padding: "20px 24px",
-        boxShadow: "0 8px 20px rgba(20, 33, 61, 0.18)",
-        display: "grid",
-        gap: "10px",
-        color: "#fff7ef",
+        padding: "32px",
+        background: "radial-gradient(circle at top right, rgba(37,99,235,0.12), transparent 26%), white",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          <p
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "18px", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: 1 }}>
+          <h2
             style={{
               margin: 0,
-              letterSpacing: "0.24em",
-              textTransform: "uppercase",
-              color: "rgba(255, 247, 239, 0.72)",
-              fontSize: "0.78rem",
+              fontSize: "clamp(26px, 3vw, 40px)",
+              lineHeight: 1.02,
+              letterSpacing: "-0.04em",
+              maxWidth: "860px",
             }}
           >
-            All Projects
+            See project risk and test health at a glance.
+          </h2>
+          <p style={{ margin: "16px 0 0", maxWidth: "760px", color: "var(--muted)", fontSize: "15px", lineHeight: 1.7 }}>
+            A cleaner AgentShield dashboard focused on the signals that matter most: project health, test status, coverage average, and a clickable overview that leads directly into project detail.
           </p>
-          <h1 style={{ margin: "8px 0 6px", fontSize: "clamp(1.6rem, 4vw, 2.6rem)", lineHeight: 1 }}>
-            Project Health Board
-          </h1>
-          <p style={{ margin: 0, color: "rgba(255, 247, 239, 0.82)", maxWidth: "720px", fontSize: "1.02rem" }}>
-            Focus on each project&apos;s onboarding progress, module scope, health, status, and blocking reason from
-            <strong> GET /api/v1/panel/projects</strong>.
-          </p>
+          <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: "12px" }}>Generated at: {generatedAt}</p>
         </div>
-        <div style={{ display: "grid", gap: "8px", alignContent: "start", justifyItems: "end" }}>
-          <Link href="/" style={{ color: "#fff7ef", fontWeight: 700 }}>
-            Back to home
-          </Link>
-          <span style={{ color: "rgba(255, 247, 239, 0.78)", fontSize: "0.95rem" }}>Generated at: {generatedAt}</span>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button type="button" className="btn-primary" onClick={() => router.refresh()}>
+            Refresh
+          </button>
+          <span className="btn-ghost">View Latest Run</span>
         </div>
       </div>
     </section>

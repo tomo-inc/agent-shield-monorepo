@@ -75,3 +75,16 @@ class RunModuleRepository:
                 .order_by(PanelRunModule.module_id.asc())
             ).scalars()
         )
+
+    def coverage_values_for_run(self, run_id: int) -> list[float]:
+        return [
+            float(value)
+            for value in self.session.execute(
+                select(PanelRunModule.coverage_pct)
+                .where(
+                    PanelRunModule.run_id == run_id,
+                    PanelRunModule.coverage_pct.is_not(None),
+                )
+                .order_by(PanelRunModule.module_id.asc())
+            ).scalars()
+        ]

@@ -1,15 +1,37 @@
 import { PanelHero } from "@/src/components/panel/PanelHero";
+import { PanelOverviewStats } from "@/src/components/panel/PanelOverviewStats";
 import { PanelProjectList } from "@/src/components/panel/PanelProjectList";
+import type { PanelProject } from "@/src/lib/panel";
 import { getPanelProjects } from "@/src/lib/panel";
 
-export default async function PanelPage() {
+type PanelPageProps = {
+  searchParams?: Promise<{ status?: string }>;
+};
+
+function filterProjectsByStatus(projects: PanelProject[], status: string | undefined): PanelProject[] {
+  if (status === "pass") {
+    return projects.filter((project) => project.status === "pass");
+  }
+  if (status === "fail") {
+    return projects.filter((project) => project.status === "fail");
+  }
+  if (status === "blocked") {
+    return projects.filter((project) => project.status === "blocked");
+  }
+  return projects;
+}
+
+export default async function PanelPage({ searchParams }: PanelPageProps) {
   try {
     const data = await getPanelProjects();
+    const resolvedSearchParams = await searchParams;
+    const filteredProjects = filterProjectsByStatus(data.projects, resolvedSearchParams?.status);
 
     return (
       <>
         <PanelHero generatedAt={data.generated_at} />
-        <PanelProjectList projects={data.projects} />
+        <PanelOverviewStats projects={data.projects} />
+        <PanelProjectList projects={filteredProjects} />
       </>
     );
   } catch (error) {

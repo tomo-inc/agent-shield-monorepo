@@ -14,6 +14,7 @@ export type PanelProject = {
   triggered_by: string | null;
   status: PanelRunStatus;
   block_reason: string | null;
+  coverage_avg_pct: number | null;
   started_at: string | null;
   finished_at: string | null;
   duration_sec: number | null;
@@ -84,6 +85,7 @@ type ApiOverviewProject = {
   check_all: Exclude<PanelRunStatus, null>;
   last_run_at: string | null;
   block_reason: string | null;
+  coverage_avg_pct: number | null;
 };
 
 type ApiProjectsResponse = {
@@ -181,6 +183,7 @@ function mapOverviewProject(project: ApiOverviewProject): PanelProject {
     triggered_by: null,
     status: project.check_all,
     block_reason: project.block_reason,
+    coverage_avg_pct: project.coverage_avg_pct,
     started_at: null,
     finished_at: project.last_run_at,
     duration_sec: null,
