@@ -23,7 +23,7 @@ services:
     environment:
       POSTGRES_DSN: postgresql+psycopg://agentshield:agentshield@postgres:5432/agentshield_panel_dev
     ports:
-      - "8000:8000"
+      - "8088:8000"
     depends_on:
       postgres:
         condition: service_healthy

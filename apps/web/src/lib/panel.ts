@@ -149,7 +149,7 @@ type ApiLatestRunResponse = {
 };
 
 function getApiBaseUrl(): string {
-  return process.env.PANEL_API_BASE_URL ?? "http://127.0.0.1:8000";
+  return process.env.PANEL_API_BASE_URL ?? "http://127.0.0.1:8088";
 }
 
 function getFallbackRun(projectKey: string, project: ApiProjectDetail): PanelLatestRun {
