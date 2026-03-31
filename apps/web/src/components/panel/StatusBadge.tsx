@@ -1,3 +1,5 @@
+import React from "react";
+
 type StatusBadgeProps = {
   label: string;
   tone: "ready" | "pending" | "pass" | "fail" | "blocked" | "neutral";

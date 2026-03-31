@@ -60,7 +60,13 @@ function PanelTopbar() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <span className="ui-avatar" aria-hidden="true" />
+        <span className="btn-ghost" style={{ gap: "6px" }}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          Search
+        </span>
       </div>
     </header>
   );

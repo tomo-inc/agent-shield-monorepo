@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 
 import type { PanelProjectDetail } from "@/src/lib/panel";
@@ -12,14 +13,6 @@ type PanelProjectDetailViewProps = {
 
 function averageCoverage(project: PanelProjectDetail): number | null {
   const values = project.modules.flatMap((module) => (module.coverage_pct === null ? [] : [module.coverage_pct]));
-  if (values.length === 0) {
-    return null;
-  }
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function averageCoverageDelta(project: PanelProjectDetail): number | null {
-  const values = project.modules.flatMap((module) => (module.coverage_delta_pct === null ? [] : [module.coverage_delta_pct]));
   if (values.length === 0) {
     return null;
   }
@@ -63,13 +56,34 @@ function DetailStatCard({ title, value, note, tone }: { title: string; value: st
 export function PanelProjectDetailView({ generatedAt, project }: PanelProjectDetailViewProps) {
   const statusTone = getStatusTone(project.latest_run.status);
   const coverageAvg = averageCoverage(project);
-  const coverageDeltaAvg = averageCoverageDelta(project);
   const blockedCount = blockedModuleCount(project);
 
   return (
     <>
-      <div style={{ margin: "22px 2px 14px", color: "var(--muted)", fontSize: "13px" }}>
-        <Link href="/panel">Projects</Link> / {project.project_name}
+      <div style={{ margin: "22px 2px 14px" }}>
+        <Link
+          href="/panel"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 16px 8px 12px",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "var(--muted)",
+            background: "white",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
+            textDecoration: "none",
+            transition: "color 0.15s, box-shadow 0.15s",
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Return to home
+        </Link>
       </div>
 
       <section
@@ -83,7 +97,7 @@ export function PanelProjectDetailView({ generatedAt, project }: PanelProjectDet
           <div>
             <h2 style={{ margin: 0, fontSize: "40px", letterSpacing: "-0.04em" }}>{project.project_name}</h2>
             <p style={{ margin: "10px 0 0", maxWidth: "760px", color: "var(--muted)", fontSize: "15px", lineHeight: 1.7 }}>
-              Dedicated project detail view focused only on the most important layer: module health, coverage movement, checker results, and blocking reasons.
+              project detail view focused on the most important layer: module health, coverage, checker results, and blocking reasons.
             </p>
             <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: "12px" }}>Generated at: {generatedAt}</p>
           </div>
@@ -111,7 +125,7 @@ export function PanelProjectDetailView({ generatedAt, project }: PanelProjectDet
         <DetailStatCard
           title="Coverage Avg"
           value={formatPercent(coverageAvg)}
-          note={coverageDeltaAvg === null ? "No baseline delta" : `${coverageDeltaAvg >= 0 ? "+" : ""}${formatPercent(coverageDeltaAvg)} from baseline`}
+          note="Average module coverage"
         />
         <DetailStatCard title="Module Count" value={project.modules.length} note={`${blockedCount} module(s) blocked`} />
         <DetailStatCard title="Blocked Modules" value={blockedCount} note={blockedCount === 0 ? "No blocking reasons reported" : "Modules need attention"} tone={blockedCount > 0 ? "blocked" : "pass"} />

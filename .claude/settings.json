@@ -57,7 +57,23 @@
       "Bash(grep -rP [x{4e00}-x{9fff}] /Users/daweima/file/tomo/new/agent-shield-monorepo/.claude/worktrees/agent-aa7a9f08 2)",
       "Bash(/dev/null --include=*.py --include=*.yaml --include=*.yml --include=*.json --include=*.toml --include=*.txt -l)",
       "Bash(/dev/null -l)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(xargs cat:*)",
+      "Bash(npx vitest:*)",
+      "Bash(pnpm --filter @agentshield/web add -D happy-dom @testing-library/react)",
+      "Bash(pnpm --filter @agentshield/web test -- --coverage)",
+      "Bash(pnpm --filter @agentshield/web add -D @vitejs/plugin-react)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in [''''devDependencies'''',''''dependencies''''] if k in d}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''engines'''',''''no engines''''\\)\\)\")",
+      "Bash(pnpm --filter ./apps/web test -- --coverage)",
+      "Bash(pnpm --filter ./apps/web exec vitest run --coverage)",
+      "Bash(pnpm --filter ./apps/web test)",
+      "Bash(pnpm --filter ./apps/api test)",
+      "Bash(pnpm --filter ./apps/cli test)",
+      "Bash(python3 -m pytest /Users/daweima/file/tomo/new/agent-shield-monorepo/apps/api/tests)",
+      "Bash(python3 -m pytest /Users/daweima/file/tomo/new/agent-shield-monorepo/packages/cli/tests)",
+      "Bash(python3 -m pip install -e \"/Users/daweima/file/tomo/new/agent-shield-monorepo/apps/api[dev]\")",
+      "Bash(\"/Users/daweima/file/tomo/new/agent-shield-monorepo/apps/api/.venv/bin/python\" -m pytest /Users/daweima/file/tomo/new/agent-shield-monorepo/apps/api/tests)"
     ]
   }
 }
