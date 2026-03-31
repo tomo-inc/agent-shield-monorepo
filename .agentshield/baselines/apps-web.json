@@ -3,7 +3,9 @@
   "created_at": "2026-03-30T08:45:58.523244+00:00",
   "source_created_at": "2026-03-30T08:45:58.076418+00:00",
   "source_run_file": ".qa-agent/runs/2026-03-30T08-45-58.076418+00-00.json",
-  "thresholds": {},
+  "thresholds": {
+    "line": 0.0
+  },
   "checks": [
     {
       "id": "apps-web-build",

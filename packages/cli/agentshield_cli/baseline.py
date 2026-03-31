@@ -142,5 +142,7 @@ def apply_baseline_gates(report: RunReport, baseline_dir: Path) -> RunReport:
                     )
                     if message not in check.stderr_tail:
                         check.stderr_tail.append(message)
+                else:
+                    check.status = "pass"
     report.status = "pass" if all(check.status == "pass" for check in report.checks) else "fail"
     return report
