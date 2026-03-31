@@ -8,7 +8,7 @@ on:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
@@ -44,3 +44,9 @@ jobs:
 
       - name: Run quality gate
         run: pnpm run ci
+
+      - name: AgentShield init
+        run: uv run --project packages/cli agentshield init --yes
+
+      - name: AgentShield check
+        run: uv run --project packages/cli agentshield check
