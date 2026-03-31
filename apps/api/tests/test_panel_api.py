@@ -64,6 +64,7 @@ def test_panel_project_register_and_overview_are_idempotent() -> None:
     assert body["projects"][0]["module_count"] == 2
     assert body["projects"][0]["check_all"] == "not-run"
     assert body["projects"][0]["health"] == "unknown"
+    assert body["projects"][0]["coverage_avg_pct"] is None
 
 
 def test_panel_run_upload_and_read_queries() -> None:
@@ -143,6 +144,7 @@ def test_panel_run_upload_and_read_queries() -> None:
     assert client.post("/api/v1/panel/baselines", json=baseline_payload).status_code == 200
 
     upload_response = client.post("/api/v1/panel/runs", json=run_payload)
+    overview_response = client.get("/api/v1/panel/projects")
     latest_response = client.get("/api/v1/panel/projects/infer-monorepo/latest")
     detail_response = client.get("/api/v1/panel/projects/infer-monorepo")
 
@@ -150,6 +152,10 @@ def test_panel_run_upload_and_read_queries() -> None:
 
     assert upload_response.status_code == 200
     assert upload_response.json()["checker_results_upserted"] == 4
+
+    assert overview_response.status_code == 200
+    overview_body = overview_response.json()
+    assert overview_body["projects"][0]["coverage_avg_pct"] == 69.75
 
     assert latest_response.status_code == 200
     latest_body = latest_response.json()

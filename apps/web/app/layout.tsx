@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AgentShield QA Automation",
-  description: "Phase 1 workspace for the AgentShield QA automation platform.",
+  title: "AgentShield Panel",
+  description: "Phase 1 workspace for the AgentShield panel.",
 };
 
 export default function RootLayout({

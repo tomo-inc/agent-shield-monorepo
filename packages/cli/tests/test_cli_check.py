@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import yaml
@@ -21,35 +22,35 @@ def _full_check_yaml(module: str) -> str:
                 "label": f"{module} - build",
                 "module": module,
                 "kind": "build",
-                "argv": ["python", "-c", "print('ok')"],
+                "argv": [sys.executable, "-c", "print('ok')"],
             },
             {
                 "id": f"{module}-lint",
                 "label": f"{module} - lint",
                 "module": module,
                 "kind": "lint",
-                "argv": ["python", "-c", "print('ok')"],
+                "argv": [sys.executable, "-c", "print('ok')"],
             },
             {
                 "id": f"{module}-typecheck",
                 "label": f"{module} - typecheck",
                 "module": module,
                 "kind": "typecheck",
-                "argv": ["python", "-c", "print('ok')"],
+                "argv": [sys.executable, "-c", "print('ok')"],
             },
             {
                 "id": f"{module}-test",
                 "label": f"{module} - test",
                 "module": module,
                 "kind": "test",
-                "argv": ["python", "-c", "print('ok')"],
+                "argv": [sys.executable, "-c", "print('ok')"],
             },
             {
                 "id": f"{module}-coverage",
                 "label": f"{module} - coverage",
                 "module": module,
                 "kind": "coverage",
-                "argv": ["python", "-c", coverage_program],
+                "argv": [sys.executable, "-c", coverage_program],
                 "coverage_parser": "coverage.py-json",
                 "coverage_file": "coverage.json",
             },

@@ -1,6 +1,6 @@
-import type { PanelProject } from "@/src/lib/panel";
+import Link from "next/link";
 
-import { StatusBadge } from "./StatusBadge";
+import type { PanelProject } from "@/src/lib/panel";
 
 type PanelOverviewStatsProps = {
   projects: PanelProject[];
@@ -10,63 +10,73 @@ function countBy<T>(items: T[], matcher: (item: T) => boolean): number {
   return items.filter(matcher).length;
 }
 
+function StatCard({
+  title,
+  value,
+  meta,
+  tone,
+  href,
+}: {
+  title: string;
+  value: number;
+  meta: string;
+  tone?: "healthy" | "warning" | "failing";
+  href: string;
+}) {
+  const color =
+    tone === "healthy" ? "var(--healthy)" : tone === "warning" ? "var(--warning)" : tone === "failing" ? "var(--failing)" : "var(--text)";
+
+  return (
+    <Link href={href} style={{ display: "block" }}>
+      <article className="panel-card" style={{ padding: "18px 20px", cursor: "pointer" }}>
+        <div style={{ color: "var(--muted)", fontSize: "12px", marginBottom: "10px" }}>{title}</div>
+        <div style={{ fontSize: "30px", fontWeight: 800, letterSpacing: "-0.03em", marginBottom: "6px", color }}>{value}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--muted)", fontSize: "11px" }}>
+          <span>{meta}</span>
+        </div>
+        <div
+          style={{
+            marginTop: "12px",
+            height: "30px",
+            borderRadius: "10px",
+            background: "linear-gradient(180deg, rgba(37,99,235,0.12), rgba(37,99,235,0.03))",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: "10px",
+              borderBottom: "2px solid var(--primary)",
+              borderRadius: "20px",
+              transform: "skewX(-16deg)",
+            }}
+          />
+        </div>
+      </article>
+    </Link>
+  );
+}
+
 export function PanelOverviewStats({ projects }: PanelOverviewStatsProps) {
   const moduleCount = projects.reduce((total, project) => total + project.module_count, 0);
-  const readyCount = countBy(projects, (project) => project.onboarding_status === "ready");
-  const pendingCount = countBy(projects, (project) => project.onboarding_status === "pending");
-  const blockedCount = countBy(projects, (project) => project.onboarding_status === "blocked");
-  const customNeededCount = countBy(projects, (project) => project.onboarding_status === "custom-needed");
   const healthyCount = countBy(projects, (project) => project.health === "healthy");
-  const warningCount = countBy(projects, (project) => project.health === "warning");
+  const blockedCount = countBy(projects, (project) => project.health === "warning" || project.status === "blocked");
   const failingCount = countBy(projects, (project) => project.health === "failing");
-  const unknownCount = countBy(projects, (project) => project.health === "unknown");
-
-  const statCardStyle = {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "12px",
-    padding: "14px 16px",
-    display: "grid",
-    gap: "6px",
-  } as const;
 
   return (
     <section
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: "10px",
+        gap: "16px",
       }}
     >
-      <article style={statCardStyle}>
-        <p style={{ margin: 0, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Total Projects
-        </p>
-        <strong style={{ fontSize: "1.4rem" }}>{projects.length}</strong>
-        <span style={{ color: "var(--muted)" }}>{moduleCount} modules in scope</span>
-      </article>
-      <article style={statCardStyle}>
-        <p style={{ margin: 0, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Onboarding
-        </p>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <StatusBadge label={`ready ${readyCount}`} tone="ready" />
-          <StatusBadge label={`pending ${pendingCount}`} tone="pending" />
-          <StatusBadge label={`blocked ${blockedCount}`} tone="blocked" />
-          <StatusBadge label={`custom ${customNeededCount}`} tone="neutral" />
-        </div>
-      </article>
-      <article style={statCardStyle}>
-        <p style={{ margin: 0, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          Health
-        </p>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <StatusBadge label={`healthy ${healthyCount}`} tone="pass" />
-          <StatusBadge label={`warning ${warningCount}`} tone="blocked" />
-          <StatusBadge label={`failing ${failingCount}`} tone="fail" />
-          <StatusBadge label={`unknown ${unknownCount}`} tone="neutral" />
-        </div>
-      </article>
+      <StatCard title="Total Projects" value={projects.length} meta={`${moduleCount} modules in scope`} href="/panel?status=all" />
+      <StatCard title="Pass Projects" value={healthyCount} meta={`${projects.length === 0 ? 0 : Math.round((healthyCount / projects.length) * 100)}% of total`} tone="healthy" href="/panel?status=pass" />
+      <StatCard title="Failing Projects" value={failingCount} meta="Tests or checks failing" tone="failing" href="/panel?status=fail" />
+      <StatCard title="Blocked Projects" value={blockedCount} meta="Needs attention" tone="warning" href="/panel?status=blocked" />
     </section>
   );
 }

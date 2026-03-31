@@ -183,6 +183,7 @@ def test_list_panel_projects_exposes_mock_project_fields() -> None:
         "check_all": "fail",
         "last_run_at": "2026-03-30T10:00:31",
         "block_reason": "apps/web coverage below gate",
+        "coverage_avg_pct": 69.75,
     }
     assert projects_by_key["agentpay-sdk-internal"] == {
         "project_key": "agentpay-sdk-internal",
@@ -194,6 +195,7 @@ def test_list_panel_projects_exposes_mock_project_fields() -> None:
         "check_all": "not-run",
         "last_run_at": None,
         "block_reason": None,
+        "coverage_avg_pct": None,
     }
 
 

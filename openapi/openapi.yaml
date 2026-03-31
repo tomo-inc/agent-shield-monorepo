@@ -549,6 +549,12 @@ components:
           - type: 'null'
           title: Block Reason
           description: Latest synchronized block reason
+        coverage_avg_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Coverage Avg Pct
+          description: Average coverage across latest run modules
       type: object
       required:
       - project_key

@@ -139,6 +139,7 @@ class PanelOverviewProject(BaseModel):
     check_all: PanelRunStatus = Field(description="Derived latest project status")
     last_run_at: datetime | None = Field(default=None, description="Latest synchronized run time")
     block_reason: str | None = Field(default=None, description="Latest synchronized block reason")
+    coverage_avg_pct: float | None = Field(default=None, description="Average coverage across latest run modules")
 
 
 class PanelProjectOverviewResponse(BaseModel):

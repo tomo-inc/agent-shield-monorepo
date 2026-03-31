@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import sys
 from pathlib import Path
 
 import agentshield_cli.cli as cli
@@ -20,35 +21,35 @@ def _full_module_checks(module: str) -> list[CheckConfig]:
             label=f"{module} - build",
             module=module,
             kind="build",
-            argv=["python", "-c", "print('ok')"],
+            argv=[sys.executable, "-c", "print('ok')"],
         ),
         CheckConfig(
             id=f"{module}-lint",
             label=f"{module} - lint",
             module=module,
             kind="lint",
-            argv=["python", "-c", "print('ok')"],
+            argv=[sys.executable, "-c", "print('ok')"],
         ),
         CheckConfig(
             id=f"{module}-typecheck",
             label=f"{module} - typecheck",
             module=module,
             kind="typecheck",
-            argv=["python", "-c", "print('ok')"],
+            argv=[sys.executable, "-c", "print('ok')"],
         ),
         CheckConfig(
             id=f"{module}-test",
             label=f"{module} - test",
             module=module,
             kind="test",
-            argv=["python", "-c", "print('ok')"],
+            argv=[sys.executable, "-c", "print('ok')"],
         ),
         CheckConfig(
             id=f"{module}-coverage",
             label=f"{module} - coverage",
             module=module,
             kind="coverage",
-            argv=["python", "-c", coverage_program],
+            argv=[sys.executable, "-c", coverage_program],
             coverage_parser="coverage.py-json",
             coverage_file="coverage.json",
         ),
@@ -176,7 +177,7 @@ def test_interactive_init_reviews_only_business_modules(monkeypatch, tmp_path: P
                 label=f"{module.path} - test",
                 module=module.path,
                 kind="test",
-                argv=["python", "-c", "print('ok')"],
+                argv=[sys.executable, "-c", "print('ok')"],
             )
         ]
 
@@ -233,7 +234,7 @@ def test_interactive_init_can_skip_module(monkeypatch, tmp_path: Path, capsys) -
                 label=f"{module.path} - test",
                 module=module.path,
                 kind="test",
-                argv=["python", "-c", "print('ok')"],
+                argv=[sys.executable, "-c", "print('ok')"],
             )
         ]
 

@@ -5,34 +5,34 @@ type StatusBadgeProps = {
 
 const toneStyles: Record<StatusBadgeProps["tone"], { background: string; color: string; borderColor: string }> = {
   ready: {
-    background: "rgba(42, 157, 143, 0.14)",
-    color: "#1f6f66",
-    borderColor: "rgba(42, 157, 143, 0.3)",
+    background: "var(--healthy-soft)",
+    color: "var(--healthy)",
+    borderColor: "rgba(22, 163, 74, 0.3)",
   },
   pending: {
-    background: "rgba(233, 196, 106, 0.18)",
-    color: "#8d6708",
-    borderColor: "rgba(233, 196, 106, 0.35)",
+    background: "var(--warning-soft)",
+    color: "var(--warning)",
+    borderColor: "rgba(217, 119, 6, 0.35)",
   },
   pass: {
-    background: "rgba(42, 157, 143, 0.14)",
-    color: "#1f6f66",
-    borderColor: "rgba(42, 157, 143, 0.3)",
+    background: "var(--healthy-soft)",
+    color: "var(--healthy)",
+    borderColor: "rgba(22, 163, 74, 0.3)",
   },
   fail: {
-    background: "rgba(231, 111, 81, 0.16)",
-    color: "#a33d22",
-    borderColor: "rgba(231, 111, 81, 0.34)",
+    background: "var(--failing-soft)",
+    color: "var(--failing)",
+    borderColor: "rgba(220, 38, 38, 0.34)",
   },
   blocked: {
-    background: "rgba(20, 33, 61, 0.12)",
-    color: "#14213d",
-    borderColor: "rgba(20, 33, 61, 0.24)",
+    background: "var(--warning-soft)",
+    color: "var(--warning)",
+    borderColor: "rgba(217, 119, 6, 0.3)",
   },
   neutral: {
-    background: "rgba(92, 103, 125, 0.12)",
-    color: "#5c677d",
-    borderColor: "rgba(92, 103, 125, 0.24)",
+    background: "var(--unknown-soft)",
+    color: "var(--unknown)",
+    borderColor: "rgba(100, 116, 139, 0.3)",
   },
 };
 
