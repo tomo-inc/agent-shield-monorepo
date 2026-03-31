@@ -52,7 +52,12 @@
       "Bash(curl -fsS \"http://127.0.0.1:8088/api/v1/panel/projects\")",
       "Bash(curl -fsS \"http://127.0.0.1:8088/api/v1/panel/projects/agent-shield-monorepo\")",
       "Bash(curl -fsS \"http://127.0.0.1:3000/panel\")",
-      "Bash(curl -s http://127.0.0.1:8088/api/v1/panel/projects)"
+      "Bash(curl -s http://127.0.0.1:8088/api/v1/panel/projects)",
+      "Bash(docker restart:*)",
+      "Bash(grep -rP [x{4e00}-x{9fff}] /Users/daweima/file/tomo/new/agent-shield-monorepo/.claude/worktrees/agent-aa7a9f08 2)",
+      "Bash(/dev/null --include=*.py --include=*.yaml --include=*.yml --include=*.json --include=*.toml --include=*.txt -l)",
+      "Bash(/dev/null -l)",
+      "Bash(python3 -c \":*)"
     ]
   }
 }

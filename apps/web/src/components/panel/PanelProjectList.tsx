@@ -22,7 +22,7 @@ export function PanelProjectList({ projects }: PanelProjectListProps) {
           <tr>
             <th style={{ width: "28%" }}>Project</th>
             <th style={{ width: "14%", textAlign: "center" }}>Health</th>
-            <th style={{ width: "16%", textAlign: "center" }}>Test Status</th>
+            <th style={{ width: "16%", textAlign: "center" }}>Check Status</th>
             <th style={{ width: "10%", textAlign: "center" }}>Modules</th>
             <th style={{ width: "12%", textAlign: "center" }}>Coverage Avg</th>
             <th style={{ width: "20%" }}>Block Reason</th>
@@ -32,7 +32,7 @@ export function PanelProjectList({ projects }: PanelProjectListProps) {
           {projects.length === 0 ? (
             <tr>
               <td colSpan={6} style={{ color: "var(--muted)", padding: "24px", textAlign: "center" }}>
-                No panel projects returned by `GET /api/v1/panel/projects`.
+                No data
               </td>
             </tr>
           ) : (
