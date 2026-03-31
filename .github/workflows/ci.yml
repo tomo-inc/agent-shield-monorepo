@@ -46,6 +46,8 @@ jobs:
         run: pnpm run ci
 
       - name: AgentShield check
+        env:
+          AGENTSHIELD_PANEL_BASE_URL: http://172.30.10.60:8088
         run: |
           if [ ! -f .agentshield/config.yaml ]; then
             uv run --project packages/cli agentshield init --yes
