@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
@@ -44,3 +45,12 @@ jobs:
 
       - name: Run quality gate
         run: pnpm run ci
+
+      - name: AgentShield check
+        env:
+          AGENTSHIELD_PANEL_BASE_URL: http://172.30.10.60:8088
+        run: |
+          if [ ! -f .agentshield/config.yaml ]; then
+            uv run --project packages/cli agentshield init --yes
+          fi
+          uv run --project packages/cli agentshield check --no-init
