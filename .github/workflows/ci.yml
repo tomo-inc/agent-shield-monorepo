@@ -45,8 +45,5 @@ jobs:
       - name: Run quality gate
         run: pnpm run ci
 
-      - name: AgentShield init
-        run: uv run --project packages/cli agentshield init --yes
-
       - name: AgentShield check
-        run: uv run --project packages/cli agentshield check
+        run: uv run --project packages/cli agentshield check --no-init
