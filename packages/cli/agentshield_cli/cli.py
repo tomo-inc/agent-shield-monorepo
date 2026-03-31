@@ -687,12 +687,12 @@ def main(argv: list[str] | None = None) -> int:
         progress_callback=_progress_callback,
     )
     initialized_baselines = [] if args.dry_run else ensure_initial_baselines(report, BASELINE_DIR)
-    if not config_exists and not args.dry_run:
+    if not args.dry_run:
         registered = sync_project_register(
             config,
             "ready" if report.status == "pass" else "blocked",
         )
-        if registered and initialized_baselines:
+        if not config_exists and registered and initialized_baselines:
             sync_baselines(
                 config,
                 baseline_dir=BASELINE_DIR,
