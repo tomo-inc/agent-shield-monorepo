@@ -171,15 +171,7 @@ def test_interactive_init_reviews_only_business_modules(monkeypatch, tmp_path: P
 
     def fake_build_checks(module, project_root):
         del project_root
-        return [
-            CheckConfig(
-                id=f"{module.path}-test",
-                label=f"{module.path} - test",
-                module=module.path,
-                kind="test",
-                argv=[sys.executable, "-c", "print('ok')"],
-            )
-        ]
+        return _full_module_checks(module.path)
 
     monkeypatch.setattr(cli, "_run_scan_with_progress", lambda bootstrap_config: report)
     monkeypatch.setattr(cli, "build_checks_from_scan_module", fake_build_checks)
@@ -195,7 +187,7 @@ def test_interactive_init_reviews_only_business_modules(monkeypatch, tmp_path: P
 
     captured = capsys.readouterr().out
     assert generated_report.project_name == "demo"
-    assert [check.module for check in generated_config.checks] == ["src/merchant"]
+    assert {check.module for check in generated_config.checks} == {"src/merchant"}
     assert "Sub-module 1/1: src/merchant" in captured
     assert "Sub-module 1/1: tests" not in captured
     assert "Detected: Rust · no framework detected" in captured
@@ -228,15 +220,7 @@ def test_interactive_init_can_skip_module(monkeypatch, tmp_path: Path, capsys) -
 
     def fake_build_checks(module, project_root):
         del project_root
-        return [
-            CheckConfig(
-                id=f"{module.path}-test",
-                label=f"{module.path} - test",
-                module=module.path,
-                kind="test",
-                argv=[sys.executable, "-c", "print('ok')"],
-            )
-        ]
+        return _full_module_checks(module.path)
 
     edit_results = {
         "src/merchant": fake_build_checks(report.modules[0], tmp_path),
@@ -260,6 +244,6 @@ def test_interactive_init_can_skip_module(monkeypatch, tmp_path: Path, capsys) -
     )
 
     captured = capsys.readouterr().out
-    assert [check.module for check in generated_config.checks] == ["src/merchant"]
+    assert {check.module for check in generated_config.checks} == {"src/merchant"}
     assert "Sub-module 1/2: src/merchant" in captured
     assert "Sub-module 2/2: src/payment_api" in captured

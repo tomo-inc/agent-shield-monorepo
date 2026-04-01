@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from agentshield_cli.baseline import apply_baseline_gates
+from agentshield_cli.check_details import missing_step_message
 from agentshield_cli.config import AgentShieldConfig, CheckConfig
 from agentshield_cli.coverage import (
     DEFAULT_LINE_COVERAGE_GATE,
@@ -45,7 +46,7 @@ def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
-def _missing_required_results(module_name: str, checks: list[CheckConfig]) -> list[CheckResult]:
+def _missing_required_results(module_name: str, checks: list[CheckConfig], project_root: Path) -> list[CheckResult]:
     existing_kinds = {check.kind for check in checks}
     missing_results: list[CheckResult] = []
     for kind in REQUIRED_CHECK_KINDS:
@@ -63,13 +64,7 @@ def _missing_required_results(module_name: str, checks: list[CheckConfig]) -> li
                 duration_sec=0.0,
                 metrics={},
                 stdout_tail=[],
-                stderr_tail=[
-                    (
-                        f"AgentShield did not generate a `{kind}` step for module `{module_name}` "
-                        "during setup. This module cannot pass until that step is added. "
-                        "Re-run `agentshield init --yes` to scan again, or add the command manually."
-                    )
-                ],
+                stderr_tail=[missing_step_message(module_name, kind, project_root)],
             )
         )
     return missing_results
@@ -250,7 +245,7 @@ def run_checks(
             for module_name, future in futures.items():
                 module_checks = grouped_all_checks.get(module_name, grouped_checks[module_name])
                 results.extend(future.result())
-                missing_results = _missing_required_results(module_name, module_checks)
+                missing_results = _missing_required_results(module_name, module_checks, project_root)
                 results.extend(missing_results)
                 for result in missing_results:
                     _emit_progress(result, progress_callback)
@@ -269,5 +264,7 @@ def run_checks(
     if baseline_dir is not None:
         report = apply_baseline_gates(report, baseline_dir)
     report = write_run_report(report, run_dir)
-    webhook_sent = send_webhook(report, config.notify) if send_notifications else False
+    webhook_sent = (
+        send_webhook(report, config.notify, project_root=project_root) if send_notifications else False
+    )
     return report, webhook_sent

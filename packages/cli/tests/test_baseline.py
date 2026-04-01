@@ -6,7 +6,7 @@ from agentshield_cli.baseline import apply_baseline_gates, build_baseline_record
 from agentshield_cli.models import CheckResult, RunReport
 
 
-def test_apply_baseline_gates_fails_when_coverage_drops(tmp_path: Path) -> None:
+def test_apply_baseline_gates_does_not_lower_default_coverage_gate(tmp_path: Path) -> None:
     baseline_dir = tmp_path / ".agentshield" / "baselines"
     baseline_report = RunReport(
         project_name="demo",
@@ -50,10 +50,12 @@ def test_apply_baseline_gates_fails_when_coverage_drops(tmp_path: Path) -> None:
                 module="apps/web",
                 kind="coverage",
                 command="pnpm exec vitest run --coverage",
-                status="pass",
+                status="fail",
                 exit_code=0,
                 duration_sec=1.0,
                 metrics={"line": 65.0},
+                gate_target=100.0,
+                stderr_tail=["coverage line 65.0% below gate >= 100.0%"],
             )
         ],
     )
@@ -61,5 +63,5 @@ def test_apply_baseline_gates_fails_when_coverage_drops(tmp_path: Path) -> None:
     updated = apply_baseline_gates(current_report, baseline_dir)
 
     assert updated.status == "fail"
-    assert updated.checks[0].gate_target == 70.0
-    assert "below gate" in updated.checks[0].stderr_tail[-1]
+    assert updated.checks[0].gate_target == 100.0
+    assert updated.checks[0].stderr_tail[-1] == "coverage line 65.0% below gate >= 100.0%"

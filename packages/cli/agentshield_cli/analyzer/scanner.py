@@ -22,6 +22,7 @@ IGNORED_DIRS = {
 ROOT_FILES = [
     "AGENTS.md",
     "Cargo.toml",
+    "go.mod",
     "README.md",
     "pom.xml",
     "package.json",
@@ -81,10 +82,12 @@ def collect_file_samples(root: Path) -> list[FileSample]:
         add(root / relative)
 
     for pattern in (
+        "apps/*/go.mod",
         ".github/workflows/*.yml",
         "apps/*/package.json",
         "apps/*/pom.xml",
         "apps/*/pyproject.toml",
+        "packages/*/go.mod",
         "packages/*/package.json",
         "packages/*/pom.xml",
         "packages/*/pyproject.toml",

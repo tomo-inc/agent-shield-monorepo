@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 
+from agentshield_cli.coverage import DEFAULT_LINE_COVERAGE_GATE
 from agentshield_cli.history import group_checks_by_module, summarize_checks
 from agentshield_cli.models import BaselineCheck, BaselineRecord, CheckResult, RunReport
 
@@ -134,11 +135,17 @@ def apply_baseline_gates(report: RunReport, baseline_dir: Path) -> RunReport:
                 threshold = baseline.thresholds.get(metric)
                 if threshold is None:
                     continue
-                check.gate_target = threshold
-                if value + 1e-9 < threshold:
+                current_gate = (
+                    check.gate_target
+                    if check.gate_target is not None
+                    else DEFAULT_LINE_COVERAGE_GATE
+                )
+                effective_threshold = max(current_gate, threshold)
+                check.gate_target = effective_threshold
+                if value + 1e-9 < effective_threshold:
                     check.status = "fail"
                     message = (
-                        f"coverage {metric} {value:.1f}% below gate >= {threshold:.1f}%"
+                        f"coverage {metric} {value:.1f}% below gate >= {effective_threshold:.1f}%"
                     )
                     if message not in check.stderr_tail:
                         check.stderr_tail.append(message)

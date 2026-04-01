@@ -11,6 +11,10 @@ from agentshield_cli.models import RepoSnapshot, ScanReport
 
 
 JSON_BLOCK = re.compile(r"```(?:json)?\s*(\{.*\})\s*```", re.DOTALL)
+HTTP_ERROR_STATUS = re.compile(r"LLM request failed with HTTP (\d{3}):")
+SCAN_MODEL_FALLBACKS: dict[str, tuple[str, ...]] = {
+    "gpt-5.4": ("claude-sonnet-4-6", "gpt-5.3-codex"),
+}
 
 
 class ScanAPIError(RuntimeError):
@@ -62,13 +66,32 @@ def _build_prompt(snapshot: RepoSnapshot) -> str:
         "For every business module, recommend commands for these check kinds in this order when possible: "
         "`build`, `typecheck`, `test`, `coverage`, `lint`.\n"
         "Set each recommended check `id` to one of those exact values.\n"
-        "Each command must be realistic for the scanned project, prefer existing scripts and package-manager commands, "
+        "Each recommended check must use an `argv` array only. Do not emit a shell `run` string.\n"
+        "Each argv must be realistic for the scanned project, prefer existing scripts and package-manager commands, "
         "and use repo-relative `cwd` when needed.\n"
+        "Do not rely on shell operators, inline environment variable prefixes, pipes, or `&&` in argv.\n"
         "If one of the five check kinds truly cannot be determined from the repository snapshot, omit it instead of inventing a fake command.\n"
         "Do not include markdown fences or any explanation outside the JSON object.\n\n"
         f"Target schema:\n{schema}\n\n"
         f"Repository snapshot:\n{payload}\n"
     )
+
+
+def _model_candidates(primary_model: str) -> list[str]:
+    candidates = [primary_model]
+    for fallback_model in SCAN_MODEL_FALLBACKS.get(primary_model, ()):
+        if fallback_model not in candidates:
+            candidates.append(fallback_model)
+    return candidates
+
+
+def _should_fallback(exc: ScanAPIError) -> bool:
+    message = str(exc)
+    status_match = HTTP_ERROR_STATUS.search(message)
+    if status_match is not None:
+        return int(status_match.group(1)) >= 500
+    lowered = message.lower()
+    return "timed out" in lowered or "timeout" in lowered
 
 
 def _post_chat_completion(body: dict[str, Any], llm_config: LLMConfig, api_key: str, endpoint: str) -> str:
@@ -124,28 +147,42 @@ def run_scan(snapshot: RepoSnapshot, llm_config: LLMConfig) -> ScanReport:
     if not settings.is_configured or not settings.base_url or not settings.api_key:
         raise ValueError("LLM scan is not configured with base_url and api_key")
 
-    body = {
-        "model": settings.model,
-        "temperature": 0,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Return valid JSON only. No markdown fences. No extra commentary.",
-            },
-            {
-                "role": "user",
-                "content": _build_prompt(snapshot),
-            },
-        ],
-    }
+    prompt = _build_prompt(snapshot)
+    candidates = _model_candidates(settings.model)
     endpoint = settings.base_url.rstrip("/") + "/chat/completions"
-    response_body = _post_chat_completion(body, llm_config, settings.api_key, endpoint)
+    last_error: ScanAPIError | None = None
+    for index, model_name in enumerate(candidates):
+        body = {
+            "model": model_name,
+            "temperature": 0,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Return valid JSON only. No markdown fences. No extra commentary.",
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+        }
+        try:
+            response_body = _post_chat_completion(body, llm_config, settings.api_key, endpoint)
+        except ScanAPIError as exc:
+            last_error = exc
+            if index == len(candidates) - 1 or not _should_fallback(exc):
+                raise
+            continue
 
-    parsed = json.loads(response_body)
-    content = parsed["choices"][0]["message"]["content"]
-    text = _extract_text_content(content)
-    json_payload = extract_json_payload(text)
-    report = ScanReport.model_validate_json(json_payload)
-    report.llm_model = settings.model
-    report.provider = settings.provider
-    return report
+        parsed = json.loads(response_body)
+        content = parsed["choices"][0]["message"]["content"]
+        text = _extract_text_content(content)
+        json_payload = extract_json_payload(text)
+        report = ScanReport.model_validate_json(json_payload)
+        report.llm_model = model_name
+        report.provider = settings.provider
+        return report
+
+    if last_error is not None:
+        raise last_error
+    raise ScanAPIError("LLM scan failed without returning a response")

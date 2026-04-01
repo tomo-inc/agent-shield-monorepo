@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib import error, request
 
 from agentshield_cli.baseline import load_baseline
+from agentshield_cli.check_details import select_failure_reason
 from agentshield_cli.config import AgentShieldConfig
 from agentshield_cli.history import module_name_from_label
 from agentshield_cli.models import CheckResult, RunReport
@@ -129,7 +130,7 @@ def build_run_upload_payload(config: AgentShieldConfig, report: RunReport, *, ba
             {
                 "checker": check.kind,
                 "status": check.status,
-                "detail": _check_detail(check),
+                "detail": _check_detail(check, config.project_root),
                 "duration_sec": check.duration_sec,
             }
             for check in checks
@@ -253,12 +254,14 @@ def _module_status(checks: list[CheckResult]) -> str:
     return "pass"
 
 
-def _check_detail(check: CheckResult) -> str | None:
-    if check.stderr_tail:
-        return check.stderr_tail[-1]
-    if check.stdout_tail:
-        return check.stdout_tail[-1]
-    return None
+def _check_detail(check: CheckResult, project_root: Path | None = None) -> str | None:
+    if check.status == "pass":
+        if check.stdout_tail:
+            return check.stdout_tail[-1]
+        if check.stderr_tail:
+            return check.stderr_tail[-1]
+        return None
+    return select_failure_reason(check, project_root=project_root)
 
 
 def _parse_report_time(value: str) -> datetime:

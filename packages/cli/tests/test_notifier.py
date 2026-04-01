@@ -268,6 +268,122 @@ def test_send_webhook_does_not_include_reason_for_pass_checks(monkeypatch) -> No
     assert "reason:" not in captured["body"]
 
 
+def test_send_webhook_uses_dependency_drift_reason_when_project_root_is_available(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, str] = {}
+    module_root = tmp_path / "apps" / "web"
+    module_root.mkdir(parents=True)
+    (tmp_path / "package.json").write_text(
+        '{"name":"demo","packageManager":"pnpm@10.11.0"}',
+        encoding="utf-8",
+    )
+    (tmp_path / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n", encoding="utf-8")
+    (module_root / "package.json").write_text(
+        '{"name":"@demo/web","devDependencies":{"happy-dom":"^20.8.9"}}',
+        encoding="utf-8",
+    )
+
+    def fake_urlopen(req, timeout):
+        captured["body"] = req.data.decode("utf-8")
+        captured["timeout"] = str(timeout)
+        return _DummyResponse('{"code":0,"msg":"success"}')
+
+    monkeypatch.setattr("agentshield_cli.notifier.request.urlopen", fake_urlopen)
+    report = RunReport(
+        project_name="demo",
+        status="fail",
+        config_path=".agentshield/config.yaml",
+        used_config_file=True,
+        strict=True,
+        run_file=str(Path(".qa-agent/runs/demo.json")),
+        checks=[
+            CheckResult(
+                id="apps-web-test",
+                label="apps/web - test",
+                module="apps/web",
+                kind="test",
+                command="pnpm run test",
+                status="fail",
+                exit_code=1,
+                duration_sec=0.2,
+                stdout_tail=["MISSING DEPENDENCY  Cannot find dependency 'happy-dom'"],
+            )
+        ],
+    )
+
+    sent = send_webhook(
+        report,
+        NotifyConfig(
+            enabled=True,
+            webhook_url="https://open.larksuite.com/open-apis/bot/v2/hook/demo",
+            timeout_sec=3,
+        ),
+        project_root=tmp_path,
+    )
+
+    assert sent is True
+    assert "`happy-dom` is declared in `apps/web/package.json`" in captured["body"]
+
+
+def test_send_webhook_prefers_real_error_over_warning_reason(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req, timeout):
+        captured["body"] = req.data.decode("utf-8")
+        captured["timeout"] = str(timeout)
+        return _DummyResponse('{"code":0,"msg":"success"}')
+
+    monkeypatch.setattr("agentshield_cli.notifier.request.urlopen", fake_urlopen)
+    report = RunReport(
+        project_name="source-agent",
+        status="fail",
+        config_path=".agentshield/config.yaml",
+        used_config_file=True,
+        strict=False,
+        run_file=str(Path(".qa-agent/runs/demo.json")),
+        checks=[
+            CheckResult(
+                id="apps-api-typecheck",
+                label="apps/api - typecheck",
+                module="apps/api",
+                kind="typecheck",
+                command="uv run --extra dev mypy src",
+                status="fail",
+                exit_code=1,
+                duration_sec=5.43,
+                stdout_tail=[
+                    (
+                        "src/source_agent/services/pipeline.py:294: error: Argument "
+                        "\"provider_params\" has incompatible type"
+                    ),
+                    "Found 1 error in 1 file (checked 21 source files)",
+                ],
+                stderr_tail=[
+                    (
+                        "warning: `VIRTUAL_ENV=/Users/admin/tomo_project/agent-shield-monorepo/packages/cli/.venv` "
+                        "does not match the project environment path `.venv` and will be ignored"
+                    )
+                ],
+            )
+        ],
+    )
+
+    sent = send_webhook(
+        report,
+        NotifyConfig(
+            enabled=True,
+            webhook_url="https://open.larksuite.com/open-apis/bot/v2/hook/demo",
+            timeout_sec=3,
+        ),
+    )
+
+    assert sent is True
+    assert "pipeline.py:294: error" in captured["body"]
+    assert "does not match the project environment path" not in captured["body"]
+
+
 def test_send_webhook_uses_customer_facing_missing_step_reason(monkeypatch) -> None:
     captured: dict[str, str] = {}
 
@@ -319,3 +435,70 @@ def test_send_webhook_uses_customer_facing_missing_step_reason(monkeypatch) -> N
     assert "coverage: FAIL (0.00s)" in captured["body"]
     assert "did not generate a `coverage` step" in captured["body"]
     assert "missing from `.agentshield/config.yaml`" not in captured["body"]
+
+
+def test_send_webhook_uses_specific_missing_step_reason_when_available(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req, timeout):
+        captured["body"] = req.data.decode("utf-8")
+        captured["timeout"] = str(timeout)
+        return _DummyResponse('{"code":0,"msg":"success"}')
+
+    module_root = tmp_path / "apps" / "web"
+    module_root.mkdir(parents=True)
+    (module_root / "package.json").write_text(
+        """
+        {
+          "name": "@demo/web",
+          "scripts": {
+            "build": "next build",
+            "lint": "eslint . --max-warnings=0",
+            "typecheck": "tsc --noEmit",
+            "test": "echo \\"No web tests yet\\""
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("agentshield_cli.notifier.request.urlopen", fake_urlopen)
+    report = RunReport(
+        project_name="source-agent",
+        status="fail",
+        config_path=".agentshield/config.yaml",
+        used_config_file=True,
+        strict=False,
+        run_file=str(Path(".qa-agent/runs/demo.json")),
+        checks=[
+            CheckResult(
+                id="apps-web-test-missing",
+                label="apps/web - test",
+                module="apps/web",
+                kind="test",
+                command="(missing configuration)",
+                status="fail",
+                exit_code=2,
+                duration_sec=0.0,
+                stderr_tail=[
+                    (
+                        "`apps/web/package.json` defines `test` as a placeholder script "
+                        "(`echo \"No web tests yet\"`), so AgentShield treated it as missing real test coverage."
+                    )
+                ],
+            )
+        ],
+    )
+
+    sent = send_webhook(
+        report,
+        NotifyConfig(
+            enabled=True,
+            webhook_url="https://open.larksuite.com/open-apis/bot/v2/hook/demo",
+            timeout_sec=3,
+        ),
+    )
+
+    assert sent is True
+    assert "placeholder script" in captured["body"]

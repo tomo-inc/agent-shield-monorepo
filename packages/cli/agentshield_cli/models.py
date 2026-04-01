@@ -70,16 +70,14 @@ class RepoSnapshot(BaseModel):
 
 class ScanCheckSuggestion(BaseModel):
     id: str
-    argv: list[str] | None = None
-    run: str | None = None
+    argv: list[str]
     cwd: str | None = None
 
     def resolved_argv(self) -> list[str] | None:
-        if self.argv:
-            return self.argv
-        if self.run:
-            return shlex.split(self.run)
-        return None
+        return self.argv
+
+    def command_display(self) -> str:
+        return shlex.join(self.argv)
 
 
 class ScanModuleSuggestion(BaseModel):
