@@ -2,18 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPanelProject, getPanelProjects } from "./panel";
 
-type MockJsonResponse = {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-};
-
-function response(status: number, data: unknown): MockJsonResponse {
+function response(status: number, data: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
     json: async () => data,
-  };
+  } as unknown as Response;
 }
 
 describe("panel api client", () => {
