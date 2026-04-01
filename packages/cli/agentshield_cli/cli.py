@@ -16,6 +16,7 @@ from agentshield_cli.baseline import (
     summarize_baseline,
     update_baselines,
 )
+from agentshield_cli.check_details import select_failure_reason
 from agentshield_cli.bootstrap import (
     build_checks_from_scan_module,
     build_config_payload,
@@ -131,7 +132,7 @@ def _print_check_start(config_path: Path, config: AgentShieldConfig) -> None:
     print(f"Running checks for {len(modules)} module(s)...")
 
 
-def _print_check_progress(result: CheckResult) -> None:
+def _print_check_progress(result: CheckResult, project_root: Path | None = None) -> None:
     check_titles = {
         "build": "Build",
         "lint": "Lint",
@@ -148,12 +149,12 @@ def _print_check_progress(result: CheckResult) -> None:
         gate = f"  gate >= {result.gate_target:.1f}%" if result.gate_target is not None else ""
         print(f"  line: {result.metrics['line']:.1f}%{gate}")
     if result.status != "pass":
-        details = result.stderr_tail[-1:] or result.stdout_tail[-1:]
-        for line in details:
-            print(f"  detail: {line}")
+        reason = select_failure_reason(result, project_root=project_root)
+        if reason:
+            print(f"  detail: {reason}")
 
 
-def _print_report(report) -> None:
+def _print_report(report, project_root: Path | None = None) -> None:
     check_titles = {
         "build": "Build",
         "lint": "Lint",
@@ -174,9 +175,13 @@ def _print_report(report) -> None:
                 gate = f"  gate >= {check.gate_target:.1f}%" if check.gate_target is not None else ""
                 print(f"  line: {check.metrics['line']:.1f}%{gate}")
             if check.status != "pass":
-                for line in check.stderr_tail[-3:]:
-                    print(f"  stderr: {line}")
-                if not check.stderr_tail:
+                reason = select_failure_reason(check, project_root=project_root)
+                if reason:
+                    print(f"  stderr: {reason}")
+                elif check.stderr_tail:
+                    for line in check.stderr_tail[-3:]:
+                        print(f"  stderr: {line}")
+                else:
                     for line in check.stdout_tail[-3:]:
                         print(f"  stdout: {line}")
     print(f"Result: {report.status.upper()}")
@@ -211,7 +216,7 @@ def _print_scan_report(report: ScanReport, report_path: Path) -> None:
             f"confidence={module.confidence:.2f}  frameworks={', '.join(module.frameworks)}"
         )
         for check in module.recommended_checks:
-            print(f"  check[{check.id}]: {check.run}")
+            print(f"  check[{check.id}]: {check.command_display()}")
         for note in module.notes[:2]:
             print(f"  note: {note}")
     for note in report.global_notes:
@@ -615,7 +620,7 @@ def main(argv: list[str] | None = None) -> int:
                 updated_at=datetime.now(timezone.utc),
             )
         if run_report.status != "pass":
-            _print_report(run_report)
+            _print_report(run_report, project_root=generated_config.project_root)
             return 1
         return 0
 
@@ -674,7 +679,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def _progress_callback(result: CheckResult) -> None:
         with progress_lock:
-            _print_check_progress(result)
+            _print_check_progress(result, project_root=config.project_root)
 
     report, webhook_sent = run_checks(
         config,
@@ -705,7 +710,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         initialized_baselines=initialized_baselines,
     )
-    _print_report(report)
+    _print_report(report, project_root=config.project_root)
     if not args.dry_run:
         sync_run(config, report, baseline_dir=BASELINE_DIR)
 

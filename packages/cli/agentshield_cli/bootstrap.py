@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shlex
 import re
 from pathlib import Path
 from typing import Iterable, Literal
@@ -20,7 +19,6 @@ def _slug(value: str) -> str:
 
 STANDARD_KINDS = ("build", "lint", "typecheck", "test", "coverage")
 CheckKind = Literal["build", "lint", "typecheck", "test", "coverage", "custom"]
-CoverageParserKind = Literal["coverage.py-json", "istanbul-summary", "jacoco-xml"]
 TEST_ONLY_PATH_MARKERS = {
     "test",
     "tests",
@@ -107,43 +105,6 @@ def _normalize_kind(value: str) -> CheckKind:
     return "custom"
 
 
-def _infer_coverage_settings(
-    suggestion: ScanCheckSuggestion,
-    preset: CheckConfig | None,
-) -> tuple[CoverageParserKind | None, str | None]:
-    if preset is not None and preset.coverage_parser and preset.coverage_file:
-        return preset.coverage_parser, preset.coverage_file
-
-    argv = suggestion.resolved_argv()
-    if argv is None and suggestion.run:
-        argv = shlex.split(suggestion.run)
-    if argv is None:
-        return None, None
-
-    for index, token in enumerate(argv):
-        if token.startswith("--cov-report=json:"):
-            return "coverage.py-json", token.split("json:", 1)[1]
-        if token == "--cov-report" and index + 1 < len(argv):
-            value = argv[index + 1]
-            if value.startswith("json:"):
-                return "coverage.py-json", value.split("json:", 1)[1]
-
-    for index, token in enumerate(argv):
-        reports_dir: str | None = None
-        if token.startswith("--coverage.reportsDirectory="):
-            reports_dir = token.split("=", 1)[1]
-        elif token == "--coverage.reportsDirectory" and index + 1 < len(argv):
-            reports_dir = argv[index + 1]
-        if reports_dir:
-            reports_dir = reports_dir.rstrip("/\\")
-            return "istanbul-summary", f"{reports_dir}/coverage-summary.json"
-
-    if any("jacoco:report" in token for token in argv):
-        return "jacoco-xml", "."
-
-    return None, None
-
-
 def _normalize_rust_argv(argv: list[str]) -> list[str]:
     if not argv:
         return argv
@@ -157,90 +118,67 @@ def _normalize_rust_argv(argv: list[str]) -> list[str]:
 def _normalize_suggestion_command(
     module: ScanModuleSuggestion,
     suggestion: ScanCheckSuggestion,
-) -> tuple[list[str] | None, str | None]:
+) -> list[str]:
     argv = suggestion.argv
-    run = suggestion.run
     if module.language.lower() != "rust":
-        return argv, run
-    if argv is not None:
-        return _normalize_rust_argv(argv), run
-    if run is None:
-        return None, None
-    parsed = shlex.split(run)
-    normalized = _normalize_rust_argv(parsed)
-    if normalized != parsed:
-        return normalized, None
-    return None, run
+        return argv
+    return _normalize_rust_argv(argv)
 
 
-def _build_check_from_suggestion(
+def _build_custom_check_from_suggestion(
     module: ScanModuleSuggestion,
     suggestion: ScanCheckSuggestion,
-    preset_by_kind: dict[str, CheckConfig],
 ) -> CheckConfig | None:
-    argv, run = _normalize_suggestion_command(module, suggestion)
-    if argv is None and suggestion.run is None:
+    inferred_kind = _normalize_kind(suggestion.id)
+    if inferred_kind in STANDARD_KINDS:
         return None
 
     module_path = module.path or module.name or "."
-    inferred_kind = _normalize_kind(suggestion.id)
-    preset = preset_by_kind.get(inferred_kind)
-    coverage_parser = None
-    coverage_file = None
-    kind = inferred_kind
-    if inferred_kind == "coverage":
-        coverage_parser, coverage_file = _infer_coverage_settings(suggestion, preset)
-        if coverage_parser is None or coverage_file is None:
-            kind = "custom"
-
-    identifier = kind if kind != "custom" else suggestion.id
+    argv = _normalize_suggestion_command(module, suggestion)
     return CheckConfig(
-        id=_check_id(module_path, identifier),
-        label=f"{module_path} - {identifier}",
+        id=_check_id(module_path, suggestion.id),
+        label=f"{module_path} - {suggestion.id}",
         module=module_path,
-        kind=kind,
+        kind="custom",
         argv=argv,
-        run=run if argv is None else None,
-        cwd=suggestion.cwd if suggestion.cwd is not None else (preset.cwd if preset is not None else None),
-        coverage_parser=coverage_parser,
-        coverage_file=coverage_file,
-        timeout_sec=preset.timeout_sec if preset is not None else (1800 if kind in {"test", "coverage"} else 1200),
+        cwd=suggestion.cwd if suggestion.cwd is not None else module_path,
+        timeout_sec=1200,
     )
 
 
 def build_checks_from_scan_module(module: ScanModuleSuggestion, project_root: Path) -> list[CheckConfig]:
     preset_checks = build_preset_checks(module, project_root)
-    preset_by_kind = {check.kind: check for check in preset_checks if check.kind in STANDARD_KINDS}
-
-    ai_checks_by_kind: dict[str, CheckConfig] = {}
     custom_ai_checks: list[CheckConfig] = []
     for suggestion in module.recommended_checks:
-        check = _build_check_from_suggestion(module, suggestion, preset_by_kind)
+        check = _build_custom_check_from_suggestion(module, suggestion)
         if check is None:
             continue
-        if check.kind in STANDARD_KINDS:
-            ai_checks_by_kind[check.kind] = check
-        else:
-            custom_ai_checks.append(check)
+        custom_ai_checks.append(check)
 
-    merged_checks: list[CheckConfig] = []
-    for kind in STANDARD_KINDS:
-        if kind in ai_checks_by_kind:
-            merged_checks.append(ai_checks_by_kind[kind])
-            continue
-        preset = preset_by_kind.get(kind)
-        if preset is not None:
-            merged_checks.append(preset)
-
-    if merged_checks or custom_ai_checks:
-        return merged_checks + custom_ai_checks
-    return preset_checks
+    if preset_checks or custom_ai_checks:
+        return preset_checks + custom_ai_checks
+    return []
 
 
 def iter_checks_from_scan(report: ScanReport, project_root: Path) -> Iterable[CheckConfig]:
     for module in reviewable_modules(report.modules):
         for check in build_checks_from_scan_module(module, project_root):
             yield check
+
+
+def _validate_generated_checks(checks: list[CheckConfig]) -> None:
+    issues: list[str] = []
+
+    for check in checks:
+        module_name = check.module or check.label.split(" - ", 1)[0]
+        if check.run is not None:
+            issues.append(
+                f"Generated check `{check.id}` for module `{module_name}` still uses shell `run`; "
+                "generated configs must use `argv` only."
+            )
+
+    if issues:
+        raise ValueError("Generated config validation failed:\n- " + "\n- ".join(issues))
 
 
 def build_config_payload(
@@ -255,6 +193,7 @@ def build_config_payload(
     if not checks:
         msg = "Analyzer did not return any runnable checks."
         raise ValueError(msg)
+    _validate_generated_checks(checks)
 
     config = AgentShieldConfig(
         version=1,

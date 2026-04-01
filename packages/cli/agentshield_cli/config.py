@@ -31,7 +31,7 @@ class CheckConfig(BaseModel):
     argv: list[str] | None = None
     run: str | None = None
     cwd: str | None = None
-    coverage_parser: Literal["coverage.py-json", "istanbul-summary", "jacoco-xml"] | None = None
+    coverage_parser: Literal["coverage.py-json", "istanbul-summary", "jacoco-xml", "go-coverprofile"] | None = None
     coverage_file: str | None = None
     timeout_sec: int = 1200
     enabled: bool = True
@@ -53,8 +53,6 @@ class CheckConfig(BaseModel):
     def resolved_argv(self) -> list[str] | None:
         if self.argv:
             return self.argv
-        if self.run:
-            return shlex.split(self.run)
         return None
 
     def command_display(self) -> str:
@@ -70,7 +68,7 @@ class LLMConfig(BaseModel):
 
     enabled: bool = True
     provider: str = "openai-compatible"
-    model: str = "claude-haiku-4-5"
+    model: str = "gpt-5.4"
     base_url: str | None = DEFAULT_LLM_BASE_URL
     base_url_env: str | None = "AGENTSHIELD_LLM_BASE_URL"
     api_key: str | None = DEFAULT_LLM_API_KEY

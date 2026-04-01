@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from urllib import parse, request
 
+from agentshield_cli.check_details import select_failure_reason
 from agentshield_cli.config import NotifyConfig
 from agentshield_cli.history import group_checks_by_module
 from agentshield_cli.models import CheckResult, RunReport
@@ -31,8 +33,8 @@ def _is_lark_webhook(webhook_url: str) -> bool:
     return any(hostname.endswith(suffix) for suffix in LARK_HOST_SUFFIXES)
 
 
-def _lark_payload(report: RunReport) -> dict[str, object]:
-    text = _lark_text(report)
+def _lark_payload(report: RunReport, project_root: Path | None = None) -> dict[str, object]:
+    text = _lark_text(report, project_root=project_root)
     return {
         "msg_type": "text",
         "content": {
@@ -61,21 +63,17 @@ def _format_check_line(check: CheckResult) -> str:
     return " | ".join(parts)
 
 
-def _failure_reason(check: CheckResult) -> str | None:
-    if check.status == "pass":
-        return None
-    if not check.stderr_tail:
-        return None
-    return check.stderr_tail[-1]
+def _failure_reason(check: CheckResult, project_root: Path | None = None) -> str | None:
+    return select_failure_reason(check, project_root=project_root)
 
 
-def _lark_text(report: RunReport) -> str:
+def _lark_text(report: RunReport, project_root: Path | None = None) -> str:
     lines = [f"AgentShield {report.status.upper()} · {report.project_name}"]
     for module, checks in group_checks_by_module(report).items():
         lines.append(f"{module}")
         for check in checks:
             lines.append(f"- {_format_check_line(check)}")
-            reason = _failure_reason(check)
+            reason = _failure_reason(check, project_root=project_root)
             if reason:
                 lines.append(f"  reason: {reason}")
     return "\n".join(lines)
@@ -93,12 +91,16 @@ def _is_lark_success(response_body: bytes) -> bool:
     return False
 
 
-def send_webhook(report: RunReport, notify: NotifyConfig) -> bool:
+def send_webhook(report: RunReport, notify: NotifyConfig, *, project_root: Path | None = None) -> bool:
     webhook_url = notify.resolved_webhook_url()
     if not webhook_url or not should_send_webhook(report, notify):
         return False
 
-    payload = _lark_payload(report) if _is_lark_webhook(webhook_url) else _generic_payload(report)
+    payload = (
+        _lark_payload(report, project_root=project_root)
+        if _is_lark_webhook(webhook_url)
+        else _generic_payload(report)
+    )
     body = json.dumps(payload).encode("utf-8")
     req = request.Request(
         webhook_url,

@@ -13,6 +13,7 @@ def test_load_config_falls_back_to_defaults(tmp_path: Path, monkeypatch) -> None
     assert path == Path(".agentshield/config.yaml")
     assert used_config_file is False
     assert [check.id for check in config.checks] == ["lint", "typecheck", "test", "openapi"]
+    assert config.llm.model == "gpt-5.4"
 
 
 def test_llm_settings_resolve_api_key_from_env(tmp_path: Path, monkeypatch) -> None:

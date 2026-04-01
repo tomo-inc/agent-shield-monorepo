@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 
-CoverageParser = Literal["coverage.py-json", "istanbul-summary", "jacoco-xml"]
+CoverageParser = Literal["coverage.py-json", "istanbul-summary", "jacoco-xml", "go-coverprofile"]
 DEFAULT_LINE_COVERAGE_GATE = 100.0
 
 
@@ -50,6 +50,38 @@ def _parse_jacoco_line_coverage(report_root: Path) -> dict[str, float]:
     return {"line": round((covered_total / total_lines) * 100, 1)}
 
 
+def _parse_go_coverprofile(report_path: Path) -> dict[str, float]:
+    total_statements = 0
+    covered_statements = 0
+    lines = report_path.read_text(encoding="utf-8").splitlines()
+    if not lines or not lines[0].startswith("mode: "):
+        msg = f"Coverage report `{report_path}` is not a valid Go coverprofile."
+        raise ValueError(msg)
+
+    for raw_line in lines[1:]:
+        line = raw_line.strip()
+        if not line:
+            continue
+        fields = line.split()
+        if len(fields) != 3:
+            msg = f"Coverage report `{report_path}` contains an invalid Go coverprofile line."
+            raise ValueError(msg)
+        try:
+            statements = int(fields[1])
+            count = int(fields[2])
+        except ValueError as exc:
+            msg = f"Coverage report `{report_path}` contains a non-numeric Go coverprofile entry."
+            raise ValueError(msg) from exc
+        total_statements += statements
+        if count > 0:
+            covered_statements += statements
+
+    if total_statements <= 0:
+        msg = f"Coverage report `{report_path}` does not contain any covered statements."
+        raise ValueError(msg)
+    return {"line": round((covered_statements / total_statements) * 100, 1)}
+
+
 def parse_coverage_metrics(parser: CoverageParser, coverage_file: Path) -> dict[str, float]:
     if not coverage_file.exists():
         msg = f"Coverage report `{coverage_file}` was not generated."
@@ -57,6 +89,8 @@ def parse_coverage_metrics(parser: CoverageParser, coverage_file: Path) -> dict[
 
     if parser == "jacoco-xml":
         return _parse_jacoco_line_coverage(coverage_file)
+    if parser == "go-coverprofile":
+        return _parse_go_coverprofile(coverage_file)
 
     payload = json.loads(coverage_file.read_text(encoding="utf-8"))
     if parser == "coverage.py-json":
