@@ -6,7 +6,7 @@ export type PanelProject = {
   project_key: string;
   project_name: string;
   repo_path: string;
-  preset: string;
+  preset: string | null;
   onboarding_status: PanelOnboardingStatus;
   module_count: number;
   health: PanelHealth;
@@ -64,7 +64,7 @@ export type PanelProjectDetail = {
   project_key: string;
   project_name: string;
   repo_path: string;
-  preset: string;
+  preset: string | null;
   onboarding_status: PanelOnboardingStatus;
   latest_run: PanelLatestRun;
   modules: PanelModule[];
@@ -78,14 +78,14 @@ export type PanelProjectDetailResponse = {
 type ApiOverviewProject = {
   project_key: string;
   project_name: string;
-  preset: string;
+  preset?: string | null;
   module_count: number;
   onboarding_status: PanelOnboardingStatus;
   health: PanelHealth;
   check_all: Exclude<PanelRunStatus, null>;
   last_run_at: string | null;
   block_reason: string | null;
-  coverage_avg_pct: number | null;
+  coverage_avg_pct?: number | null;
 };
 
 type ApiProjectsResponse = {
@@ -119,7 +119,7 @@ type ApiLatestRunRef = {
 type ApiProjectDetail = {
   project_key: string;
   project_name: string;
-  preset: string;
+  preset?: string | null;
   onboarding_status: PanelOnboardingStatus;
   latest_run: ApiLatestRunRef | null;
   modules: ApiRunModule[];
@@ -170,12 +170,20 @@ function getFallbackRun(projectKey: string, project: ApiProjectDetail): PanelLat
   };
 }
 
+function normalizeOptionalString(value: string | null | undefined): string | null {
+  return value ?? null;
+}
+
+function normalizeOptionalNumber(value: number | null | undefined): number | null {
+  return value ?? null;
+}
+
 function mapOverviewProject(project: ApiOverviewProject): PanelProject {
   return {
     project_key: project.project_key,
     project_name: project.project_name,
     repo_path: project.project_key,
-    preset: project.preset,
+    preset: normalizeOptionalString(project.preset),
     onboarding_status: project.onboarding_status,
     module_count: project.module_count,
     health: project.health,
@@ -183,7 +191,7 @@ function mapOverviewProject(project: ApiOverviewProject): PanelProject {
     triggered_by: null,
     status: project.check_all,
     block_reason: project.block_reason,
-    coverage_avg_pct: project.coverage_avg_pct,
+    coverage_avg_pct: normalizeOptionalNumber(project.coverage_avg_pct),
     started_at: null,
     finished_at: project.last_run_at,
     duration_sec: null,
@@ -195,7 +203,7 @@ function mapProjectDetail(project: ApiProjectDetail, latestRun: ApiLatestRun | n
     project_key: project.project_key,
     project_name: project.project_name,
     repo_path: project.project_key,
-    preset: project.preset,
+    preset: normalizeOptionalString(project.preset),
     onboarding_status: project.onboarding_status,
     latest_run: latestRun
       ? {

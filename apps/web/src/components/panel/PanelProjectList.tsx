@@ -55,7 +55,7 @@ export function PanelProjectList({ projects }: PanelProjectListProps) {
                   {project.module_count}
                 </td>
                 <td data-label="Coverage Avg" style={{ textAlign: "center", fontWeight: 600 }}>
-                  {project.coverage_avg_pct === null ? <span style={{ color: "var(--muted)" }}>—</span> : `${project.coverage_avg_pct.toFixed(1)}%`}
+                  {project.coverage_avg_pct == null ? <span style={{ color: "var(--muted)" }}>—</span> : `${project.coverage_avg_pct.toFixed(1)}%`}
                 </td>
                 <td data-label="Block Reason" style={{ color: "var(--muted)", fontSize: "12px" }}>
                   {project.block_reason ?? "—"}

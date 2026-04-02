@@ -1,7 +1,7 @@
 import type { PanelHealth, PanelOnboardingStatus, PanelRunStatus } from "@/src/lib/panel";
 
-export function formatDateTime(value: string | null): string {
-  if (value === null) {
+export function formatDateTime(value: string | null | undefined): string {
+  if (value == null) {
     return "-";
   }
 
@@ -17,16 +17,16 @@ export function formatDateTime(value: string | null): string {
   }).format(date);
 }
 
-export function formatDuration(value: number | null): string {
-  if (value === null) {
+export function formatDuration(value: number | null | undefined): string {
+  if (value == null) {
     return "-";
   }
 
   return `${value}s`;
 }
 
-export function formatPercent(value: number | null): string {
-  if (value === null) {
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null) {
     return "-";
   }
 
