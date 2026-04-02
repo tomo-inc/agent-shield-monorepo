@@ -77,6 +77,48 @@ describe("panel api client", () => {
     expect(fetch).toHaveBeenCalledWith("http://panel-api.internal/api/v1/panel/projects", { cache: "no-store" });
   });
 
+  it("normalizes missing nullable fields from project list payload", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      response(200, {
+        generated_at: "2026-04-01T13:00:00Z",
+        projects: [
+          {
+            project_key: "legacy-project",
+            project_name: "Legacy Project",
+            module_count: 1,
+            onboarding_status: "blocked",
+            health: "failing",
+            check_all: "fail",
+            last_run_at: "2026-04-01T12:59:00Z",
+            block_reason: null,
+          },
+        ],
+      }),
+    );
+
+    const result = await getPanelProjects();
+
+    expect(result.projects).toEqual([
+      {
+        project_key: "legacy-project",
+        project_name: "Legacy Project",
+        repo_path: "legacy-project",
+        preset: null,
+        onboarding_status: "blocked",
+        module_count: 1,
+        health: "failing",
+        source: null,
+        triggered_by: null,
+        status: "fail",
+        block_reason: null,
+        coverage_avg_pct: null,
+        started_at: null,
+        finished_at: "2026-04-01T12:59:00Z",
+        duration_sec: null,
+      },
+    ]);
+  });
+
   it("throws when loading project list fails", async () => {
     vi.mocked(fetch).mockResolvedValue(response(503, { message: "unavailable" }));
 
