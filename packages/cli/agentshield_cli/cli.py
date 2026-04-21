@@ -250,6 +250,8 @@ def _print_init_summary(
 
     configured_by_module: dict[str, int] = {}
     for check in configured_checks:
+        if not check.enabled:
+            continue
         if not check.module:
             continue
         configured_by_module.setdefault(check.module, 0)

@@ -10,11 +10,20 @@ from agentshield_cli.bootstrap import (
 )
 from agentshield_cli.config import AgentShieldConfig
 from agentshield_cli.models import RepoSnapshot, ScanCheckSuggestion, ScanModuleSuggestion, ScanReport
+from agentshield_cli.presets import explain_missing_standard_checks
 
 
-def _write_python_pyproject(path: Path) -> None:
+def _write_python_pyproject(path: Path, *, include_pyright_config: bool = True) -> None:
+    pyright_block = ""
+    if include_pyright_config:
+        pyright_block = """
+
+[tool.pyright]
+include = ["src", "tests"]
+"""
     path.write_text(
-        """
+        (
+            """
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -31,10 +40,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[tool.pyright]
-include = ["src", "tests"]
-        """.strip(),
+"""
+            + pyright_block
+        ).strip(),
         encoding="utf-8",
     )
 
@@ -45,6 +53,32 @@ def _write_go_mod(path: Path) -> None:
 module github.com/demo/service
 
 go 1.23.0
+        """.strip(),
+        encoding="utf-8",
+    )
+
+
+def _write_root_python_pyproject(path: Path, *, include_typecheck: bool = True, include_coverage: bool = True) -> None:
+    dev_deps = ['"pytest>=8"']
+    if include_coverage:
+        dev_deps.append('"pytest-cov>=6"')
+    if include_typecheck:
+        dev_deps.extend(['"pyright>=1"', '"ruff>=0.1"'])
+    path.write_text(
+        f"""
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demo-root"
+dependencies = ["fastapi>=0.1"]
+
+[project.optional-dependencies]
+dev = [{", ".join(dev_deps)}]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
         """.strip(),
         encoding="utf-8",
     )
@@ -167,6 +201,147 @@ def test_build_checks_from_scan_module_uses_java_preset_for_apps_api(tmp_path: P
     assert checks[4].argv == ["mvn", "-B", "test", "jacoco:report"]
     assert checks[4].coverage_parser == "jacoco-xml"
     assert checks[4].coverage_file == "."
+
+
+def test_build_checks_from_scan_module_inherits_root_python_manifest_for_submodule(tmp_path: Path) -> None:
+    (tmp_path / "infer" / "auth").mkdir(parents=True)
+    (tmp_path / "infer" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "infer" / "auth" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests" / "auth").mkdir(parents=True)
+    _write_root_python_pyproject(tmp_path / "pyproject.toml")
+
+    module = ScanModuleSuggestion(
+        name="auth",
+        path="infer/auth",
+        language="python",
+        frameworks=["fastapi"],
+        confidence=0.93,
+        recommended_checks=[],
+    )
+
+    checks = build_checks_from_scan_module(module, tmp_path)
+
+    assert [check.kind for check in checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert checks[0].argv == ["uv", "build", "."]
+    assert checks[0].cwd == "."
+    assert checks[1].argv == ["uv", "run", "--extra", "dev", "ruff", "check", "infer/auth", "tests/auth"]
+    assert checks[1].cwd == "."
+    assert checks[2].argv == ["uv", "run", "--extra", "dev", "pyright", "infer/auth"]
+    assert checks[2].cwd == "."
+    assert checks[3].argv == ["uv", "run", "--extra", "dev", "pytest", "tests/auth"]
+    assert checks[3].cwd == "."
+    assert checks[4].argv == [
+        "uv",
+        "run",
+        "--extra",
+        "dev",
+        "pytest",
+        "--cov=infer/auth",
+        "--cov-report=json:.qa-agent/generated/coverage/infer-auth/coverage.json",
+        "tests/auth",
+    ]
+    assert checks[4].coverage_file == ".qa-agent/generated/coverage/infer-auth/coverage.json"
+    assert checks[4].cwd == "."
+
+
+def test_build_checks_from_scan_module_inherits_root_python_manifest_with_fallback_tools(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "infer" / "auth").mkdir(parents=True)
+    (tmp_path / "infer" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "infer" / "auth" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests" / "auth").mkdir(parents=True)
+    _write_root_python_pyproject(tmp_path / "pyproject.toml", include_typecheck=False, include_coverage=False)
+
+    module = ScanModuleSuggestion(
+        name="auth",
+        path="infer/auth",
+        language="python",
+        frameworks=["fastapi"],
+        confidence=0.93,
+        recommended_checks=[],
+    )
+
+    checks = build_checks_from_scan_module(module, tmp_path)
+
+    assert [check.kind for check in checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert checks[0].argv == ["uv", "build", "."]
+    assert checks[0].cwd == "."
+    assert checks[1].argv == ["uv", "run", "--with", "ruff", "ruff", "check", "infer/auth", "tests/auth"]
+    assert checks[1].cwd == "."
+    assert checks[2].argv == ["uv", "run", "--with", "pyright", "pyright", "infer/auth"]
+    assert checks[2].cwd == "."
+    assert checks[3].argv == ["uv", "run", "--extra", "dev", "pytest", "tests/auth"]
+    assert checks[3].cwd == "."
+    assert checks[4].argv == [
+        "uv",
+        "run",
+        "--extra",
+        "dev",
+        "--with",
+        "pytest-cov",
+        "pytest",
+        "--cov=infer/auth",
+        "--cov-report=json:.qa-agent/generated/coverage/infer-auth/coverage.json",
+        "tests/auth",
+    ]
+    assert checks[4].coverage_file == ".qa-agent/generated/coverage/infer-auth/coverage.json"
+    assert checks[4].cwd == "."
+
+
+def test_build_checks_from_scan_module_does_not_inherit_root_python_manifest_for_unrelated_submodule(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "infer").mkdir()
+    (tmp_path / "infer" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "tests").mkdir()
+    _write_root_python_pyproject(tmp_path / "pyproject.toml")
+
+    module = ScanModuleSuggestion(
+        name="scripts",
+        path="scripts",
+        language="python",
+        confidence=0.9,
+        recommended_checks=[],
+    )
+
+    checks = build_checks_from_scan_module(module, tmp_path)
+
+    assert checks == []
+
+
+def test_build_checks_from_scan_module_defaults_python_typecheck_to_source_paths(tmp_path: Path) -> None:
+    module_root = tmp_path / "apps" / "api"
+    (module_root / "src").mkdir(parents=True)
+    (module_root / "tests").mkdir()
+    _write_python_pyproject(module_root / "pyproject.toml", include_pyright_config=False)
+
+    module = ScanModuleSuggestion(
+        name="api",
+        path="apps/api",
+        language="python",
+        frameworks=["fastapi"],
+        confidence=0.95,
+        recommended_checks=[],
+    )
+
+    checks = build_checks_from_scan_module(module, tmp_path)
+
+    assert [check.kind for check in checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert checks[2].argv == ["uv", "run", "--extra", "dev", "pyright", "src"]
+
+
+def test_explain_missing_standard_checks_skips_inherited_python_fallback_reasons(tmp_path: Path) -> None:
+    (tmp_path / "infer" / "auth").mkdir(parents=True)
+    (tmp_path / "infer" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "infer" / "auth" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests" / "auth").mkdir(parents=True)
+    _write_root_python_pyproject(tmp_path / "pyproject.toml", include_typecheck=False, include_coverage=False)
+
+    reasons = explain_missing_standard_checks("infer/auth", tmp_path)
+
+    assert reasons == {}
 
 
 def test_build_config_from_scan_excludes_test_only_modules(tmp_path: Path) -> None:
@@ -300,10 +475,211 @@ def test_build_config_from_scan_allows_incomplete_generated_quality_gate(tmp_pat
         include_notify=False,
     )
 
-    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck"]
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, True, True, False, False]
     assert config.checks[0].argv == ["npm", "run", "build"]
     assert config.checks[1].argv == ["npm", "run", "lint"]
     assert config.checks[2].argv == ["npm", "run", "typecheck"]
+
+
+def test_build_config_from_scan_prefers_test_unit_script_for_node_builtin_coverage(tmp_path: Path) -> None:
+    module_root = tmp_path / "apps" / "web"
+    module_root.mkdir(parents=True)
+    (module_root / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "@demo/web",
+                "packageManager": "pnpm@10.11.0",
+                "scripts": {
+                    "build": "next build",
+                    "lint": "next lint",
+                    "test:unit": "node --test tests/*.test.cjs",
+                    "test:auth": "node scripts/verify-auth.mjs",
+                    "test:ui": "playwright test",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config, _ = build_config_from_scan(
+        ScanReport(
+            project_name="demo-repo",
+            project_type="node",
+            summary="demo",
+            modules=[
+                ScanModuleSuggestion(
+                    name="web",
+                    path="apps/web",
+                    language="typescript",
+                    frameworks=["next.js"],
+                    confidence=0.9,
+                    recommended_checks=[],
+                )
+            ],
+        ),
+        project_root=tmp_path,
+        existing_config=AgentShieldConfig(),
+        include_llm=False,
+        include_notify=False,
+    )
+
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, False, False, True, True]
+    assert config.checks[0].argv == ["pnpm", "run", "build"]
+    assert config.checks[1].argv == ["true"]
+    assert config.checks[3].argv == ["pnpm", "run", "test:unit"]
+    assert config.checks[4].argv == [
+        "pnpm",
+        "dlx",
+        "c8@10.1.3",
+        "--reporter=json-summary",
+        "--reporter=text",
+        "--reports-dir",
+        "../../.qa-agent/generated/coverage/apps-web",
+        "pnpm",
+        "run",
+        "test:unit",
+    ]
+    assert config.checks[4].coverage_parser == "istanbul-summary"
+    assert config.checks[4].coverage_file == "../../.qa-agent/generated/coverage/apps-web/coverage-summary.json"
+
+
+def test_build_config_from_scan_generates_typecheck_from_typescript_and_tsconfig(tmp_path: Path) -> None:
+    module_root = tmp_path / "auth"
+    module_root.mkdir(parents=True)
+    (module_root / "tsconfig.json").write_text('{"compilerOptions":{"noEmit":true}}\n', encoding="utf-8")
+    (module_root / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "@demo/auth",
+                "packageManager": "pnpm@10.11.0",
+                "scripts": {
+                    "build": "next build",
+                    "lint": "next lint",
+                    "test:unit": "node --experimental-strip-types --test tests/*.test.cjs",
+                },
+                "dependencies": {
+                    "next": "^15.0.0",
+                    "react": "^19.0.0",
+                },
+                "devDependencies": {
+                    "typescript": "^5.7.0",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config, _ = build_config_from_scan(
+        ScanReport(
+            project_name="demo-repo",
+            project_type="node",
+            summary="demo",
+            modules=[
+                ScanModuleSuggestion(
+                    name="auth",
+                    path="auth",
+                    language="typescript",
+                    frameworks=["next.js"],
+                    confidence=0.95,
+                    recommended_checks=[],
+                )
+            ],
+        ),
+        project_root=tmp_path,
+        existing_config=AgentShieldConfig(),
+        include_llm=False,
+        include_notify=False,
+    )
+
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, False, True, True, True]
+    assert config.checks[0].argv == ["pnpm", "run", "build"]
+    assert config.checks[1].argv == ["true"]
+    assert config.checks[2].argv == ["pnpm", "exec", "tsc", "--noEmit"]
+    assert config.checks[3].argv == ["pnpm", "run", "test:unit"]
+    assert config.checks[4].argv == [
+        "pnpm",
+        "dlx",
+        "c8@10.1.3",
+        "--reporter=json-summary",
+        "--reporter=text",
+        "--reports-dir",
+        "../.qa-agent/generated/coverage/auth",
+        "pnpm",
+        "run",
+        "test:unit",
+    ]
+
+
+def test_build_config_from_scan_generates_lint_from_next_and_eslint_config(tmp_path: Path) -> None:
+    module_root = tmp_path / "auth"
+    module_root.mkdir(parents=True)
+    (module_root / "tsconfig.json").write_text('{"compilerOptions":{"noEmit":true}}\n', encoding="utf-8")
+    (module_root / "eslint.config.mjs").write_text("export default [];\n", encoding="utf-8")
+    (module_root / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "@demo/auth",
+                "packageManager": "pnpm@10.11.0",
+                "scripts": {
+                    "build": "next build",
+                    "test:unit": "node --experimental-strip-types --test tests/*.test.cjs",
+                },
+                "dependencies": {
+                    "next": "^15.0.0",
+                    "react": "^19.0.0",
+                },
+                "devDependencies": {
+                    "eslint": "^9.0.0",
+                    "typescript": "^5.7.0",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config, _ = build_config_from_scan(
+        ScanReport(
+            project_name="demo-repo",
+            project_type="node",
+            summary="demo",
+            modules=[
+                ScanModuleSuggestion(
+                    name="auth",
+                    path="auth",
+                    language="typescript",
+                    frameworks=["next.js"],
+                    confidence=0.95,
+                    recommended_checks=[],
+                )
+            ],
+        ),
+        project_root=tmp_path,
+        existing_config=AgentShieldConfig(),
+        include_llm=False,
+        include_notify=False,
+    )
+
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, True, True, True, True]
+    assert config.checks[0].argv == ["pnpm", "run", "build"]
+    assert config.checks[1].argv == ["pnpm", "exec", "next", "lint"]
+    assert config.checks[2].argv == ["pnpm", "exec", "tsc", "--noEmit"]
+    assert config.checks[3].argv == ["pnpm", "run", "test:unit"]
+    assert config.checks[4].argv == [
+        "pnpm",
+        "dlx",
+        "c8@10.1.3",
+        "--reporter=json-summary",
+        "--reporter=text",
+        "--reports-dir",
+        "../.qa-agent/generated/coverage/auth",
+        "pnpm",
+        "run",
+        "test:unit",
+    ]
 
 
 def test_build_config_from_scan_uses_module_local_package_manager(tmp_path: Path) -> None:
@@ -348,10 +724,11 @@ def test_build_config_from_scan_uses_module_local_package_manager(tmp_path: Path
         include_notify=False,
     )
 
-    assert [check.kind for check in config.checks] == ["build", "typecheck", "test"]
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, False, True, True, False]
     assert config.checks[0].argv == ["bun", "run", "build"]
-    assert config.checks[1].argv == ["bun", "run", "typecheck"]
-    assert config.checks[2].argv == ["bun", "run", "test"]
+    assert config.checks[2].argv == ["bun", "run", "typecheck"]
+    assert config.checks[3].argv == ["bun", "run", "test"]
 
 
 def test_build_config_from_scan_falls_back_to_root_package_manager(tmp_path: Path) -> None:
@@ -397,7 +774,8 @@ def test_build_config_from_scan_falls_back_to_root_package_manager(tmp_path: Pat
         include_notify=False,
     )
 
-    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck"]
+    assert [check.kind for check in config.checks] == ["build", "lint", "typecheck", "test", "coverage"]
+    assert [check.enabled for check in config.checks] == [True, True, True, False, False]
     assert config.checks[0].argv == ["pnpm", "run", "build"]
     assert config.checks[1].argv == ["pnpm", "run", "lint"]
     assert config.checks[2].argv == ["pnpm", "run", "typecheck"]

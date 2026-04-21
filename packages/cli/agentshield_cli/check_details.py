@@ -21,6 +21,9 @@ _DETAILED_ERROR_MARKERS = (
     "missing",
 )
 _LOW_SIGNAL_PREFIXES = ("warning:", "note:", "info:")
+_LOW_SIGNAL_CONTAINS = (
+    "elifecycle",
+)
 _SUMMARY_ERROR_PATTERNS = (
     re.compile(r"^found \d+ error"),
     re.compile(r"^\d+ errors? generated"),
@@ -29,6 +32,10 @@ _NODE_MISSING_PACKAGE_PATTERNS = (
     re.compile(r"Cannot find package '([^']+)'"),
     re.compile(r"Cannot find dependency '([^']+)'"),
     re.compile(r"Cannot find module '([^']+)'"),
+)
+_NODE_COMMAND_NOT_FOUND_PATTERNS = (
+    re.compile(r"(?:sh:\s*)?([A-Za-z0-9@._/+:-]+): command not found"),
+    re.compile(r"'([^']+)' is not recognized as an internal or external command"),
 )
 _NODE_PACKAGE_MANAGERS = ("pnpm", "npm", "yarn", "bun", "bunx")
 _PACKAGE_MANAGER_LOCKFILES: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -46,6 +53,13 @@ _VITEST_CONFIG_FILES = (
 _VITEST_ENVIRONMENT_PACKAGES = {
     "happy-dom": "happy-dom",
     "jsdom": "jsdom",
+}
+_NODE_BINARY_PACKAGE_MAP = {
+    "eslint": "eslint",
+    "jest": "jest",
+    "next": "next",
+    "tsc": "typescript",
+    "vitest": "vitest",
 }
 
 
@@ -149,6 +163,22 @@ def _iter_missing_node_packages(lines: list[str]) -> list[str]:
     return packages
 
 
+def _iter_missing_node_binaries(lines: list[str]) -> list[str]:
+    binaries: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        for pattern in _NODE_COMMAND_NOT_FOUND_PATTERNS:
+            match = pattern.search(line)
+            if match is None:
+                continue
+            binary_name = match.group(1).strip()
+            if not binary_name or binary_name in seen:
+                continue
+            seen.add(binary_name)
+            binaries.append(binary_name)
+    return binaries
+
+
 def _looks_installed(project_root: Path, module_root: Path, package_name: str) -> bool:
     package_parts = package_name.split("/")
     direct_locations = (
@@ -165,20 +195,20 @@ def _looks_installed(project_root: Path, module_root: Path, package_name: str) -
     return any(pnpm_store.glob(f"{folder_prefix}@*"))
 
 
-def _recommended_install_command(package_manager: str, project_root: Path) -> str:
+def _recommended_install_command(package_manager: str, install_root: Path) -> str:
     if package_manager == "pnpm":
-        if (project_root / "pnpm-lock.yaml").exists():
+        if (install_root / "pnpm-lock.yaml").exists():
             return "pnpm install --frozen-lockfile"
         return "pnpm install"
     if package_manager == "yarn":
-        if (project_root / "yarn.lock").exists():
+        if (install_root / "yarn.lock").exists():
             return "yarn install --immutable"
         return "yarn install"
     if package_manager == "bun":
-        if (project_root / "bun.lock").exists() or (project_root / "bun.lockb").exists():
+        if (install_root / "bun.lock").exists() or (install_root / "bun.lockb").exists():
             return "bun install --frozen-lockfile"
         return "bun install"
-    if (project_root / "package-lock.json").exists() or (project_root / "npm-shrinkwrap.json").exists():
+    if (install_root / "package-lock.json").exists() or (install_root / "npm-shrinkwrap.json").exists():
         return "npm ci"
     return "npm install"
 
@@ -206,6 +236,39 @@ def _expected_vitest_environment_package(module_root: Path) -> str | None:
         if package_name:
             return package_name
     return None
+
+
+def _choose_node_install_root(project_root: Path, module_root: Path) -> tuple[Path, str]:
+    root_has_node_workspace = (
+        _load_json_file(project_root / "package.json") is not None
+        or _package_manager_from_lockfiles(project_root) is not None
+    )
+    if root_has_node_workspace or project_root == module_root:
+        return project_root, "repo root"
+
+    try:
+        relative_module_root = module_root.relative_to(project_root)
+    except ValueError:
+        return module_root, str(module_root)
+    return module_root, str(relative_module_root)
+
+
+def _dependency_install_reason(
+    *,
+    package_name: str,
+    declared_in: str,
+    project_root: Path,
+    module_root: Path,
+    module_package_data: dict[str, object] | None,
+) -> str:
+    package_manager = _detect_node_package_manager(project_root, module_root, module_package_data)
+    install_root, install_location = _choose_node_install_root(project_root, module_root)
+    install_command = _recommended_install_command(package_manager, install_root)
+    location_text = "from the repo root" if install_location == "repo root" else f"in `{install_location}`"
+    return (
+        f"`{package_name}` is declared in `{declared_in}` but is not installed in the current workspace. "
+        f"Run `{install_command}` {location_text} to sync dependencies."
+    )
 
 
 def _node_dependency_install_drift_reason(
@@ -240,11 +303,27 @@ def _node_dependency_install_drift_reason(
             continue
         if _looks_installed(project_root, module_root, package_name):
             continue
-        package_manager = _detect_node_package_manager(project_root, module_root, module_package_data)
-        install_command = _recommended_install_command(package_manager, project_root)
-        return (
-            f"`{package_name}` is declared in `{declared_in}` but is not installed in the current workspace. "
-            f"Run `{install_command}` from the repo root to sync dependencies."
+        return _dependency_install_reason(
+            package_name=package_name,
+            declared_in=declared_in,
+            project_root=project_root,
+            module_root=module_root,
+            module_package_data=module_package_data,
+        )
+
+    for binary_name in _iter_missing_node_binaries(check.stderr_tail + check.stdout_tail):
+        package_name = _NODE_BINARY_PACKAGE_MAP.get(binary_name, binary_name)
+        declared_in = declared_paths.get(package_name)
+        if declared_in is None:
+            continue
+        if _looks_installed(project_root, module_root, package_name):
+            continue
+        return _dependency_install_reason(
+            package_name=package_name,
+            declared_in=declared_in,
+            project_root=project_root,
+            module_root=module_root,
+            module_package_data=module_package_data,
         )
 
     if check.kind in {"test", "coverage"} and "ERR_MODULE_NOT_FOUND" in " ".join(check.stderr_tail + check.stdout_tail):
@@ -252,11 +331,12 @@ def _node_dependency_install_drift_reason(
         if package_name:
             declared_in = declared_paths.get(package_name)
             if declared_in is not None and not _looks_installed(project_root, module_root, package_name):
-                package_manager = _detect_node_package_manager(project_root, module_root, module_package_data)
-                install_command = _recommended_install_command(package_manager, project_root)
-                return (
-                    f"`{package_name}` is declared in `{declared_in}` but is not installed in the current "
-                    f"workspace. Run `{install_command}` from the repo root to sync dependencies."
+                return _dependency_install_reason(
+                    package_name=package_name,
+                    declared_in=declared_in,
+                    project_root=project_root,
+                    module_root=module_root,
+                    module_package_data=module_package_data,
                 )
     return None
 
@@ -269,7 +349,10 @@ def _matches_summary_error(line: str) -> bool:
 def _select_from_lines(lines: list[str], *, skip_low_signal: bool) -> str | None:
     for line in reversed(lines):
         lowered = line.lower()
-        if skip_low_signal and lowered.startswith(_LOW_SIGNAL_PREFIXES):
+        if skip_low_signal and (
+            lowered.startswith(_LOW_SIGNAL_PREFIXES)
+            or any(marker in lowered for marker in _LOW_SIGNAL_CONTAINS)
+        ):
             continue
         if _matches_summary_error(lowered):
             continue
@@ -278,7 +361,10 @@ def _select_from_lines(lines: list[str], *, skip_low_signal: bool) -> str | None
 
     for line in reversed(lines):
         lowered = line.lower()
-        if skip_low_signal and lowered.startswith(_LOW_SIGNAL_PREFIXES):
+        if skip_low_signal and (
+            lowered.startswith(_LOW_SIGNAL_PREFIXES)
+            or any(marker in lowered for marker in _LOW_SIGNAL_CONTAINS)
+        ):
             continue
         if any(marker in lowered for marker in _DETAILED_ERROR_MARKERS) or _matches_summary_error(lowered):
             return line
@@ -304,7 +390,7 @@ def select_failure_reason(check: CheckResult, project_root: Path | None = None) 
 
     for line in reversed(check.stderr_tail):
         lowered = line.lower()
-        if lowered.startswith(_LOW_SIGNAL_PREFIXES):
+        if lowered.startswith(_LOW_SIGNAL_PREFIXES) or any(marker in lowered for marker in _LOW_SIGNAL_CONTAINS):
             continue
         return line
 

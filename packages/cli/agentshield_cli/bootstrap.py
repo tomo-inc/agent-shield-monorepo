@@ -43,6 +43,14 @@ def _check_id(module_path: str, kind: str) -> str:
     return f"{_slug(module_path)}-{_slug(kind)}"
 
 
+def _check_module_name(check: CheckConfig) -> str | None:
+    if check.module:
+        return check.module
+    if " - " in check.label:
+        return check.label.split(" - ", 1)[0]
+    return None
+
+
 def is_test_only_module(module: ScanModuleSuggestion) -> bool:
     parts = {part.lower() for part in Path(module.path).parts}
     if parts & TEST_ONLY_PATH_MARKERS:
@@ -181,6 +189,63 @@ def _validate_generated_checks(checks: list[CheckConfig]) -> None:
         raise ValueError("Generated config validation failed:\n- " + "\n- ".join(issues))
 
 
+def _disabled_generated_standard_check(module_path: str, kind: CheckKind) -> CheckConfig:
+    module_slug = _slug(module_path) or "root"
+    payload: dict[str, object] = {
+        "id": _check_id(module_path, f"{kind}-disabled"),
+        "label": f"{module_path} - {kind}",
+        "module": module_path,
+        "kind": kind,
+        "argv": ["true"],
+        "cwd": module_path,
+        "enabled": False,
+    }
+    if kind == "coverage":
+        payload["coverage_parser"] = "istanbul-summary"
+        payload["coverage_file"] = f".qa-agent/generated/coverage/{module_slug}/coverage-summary.json"
+    return CheckConfig.model_validate(payload)
+
+
+def _fill_missing_node_standard_checks(project_root: Path, checks: list[CheckConfig]) -> list[CheckConfig]:
+    grouped: dict[str, list[CheckConfig]] = {}
+    module_order: list[str] = []
+    passthrough_checks: list[CheckConfig] = []
+    for check in checks:
+        module_name = _check_module_name(check)
+        if module_name is None:
+            passthrough_checks.append(check)
+            continue
+        if module_name not in grouped:
+            grouped[module_name] = []
+            module_order.append(module_name)
+        grouped[module_name].append(check)
+
+    augmented: list[CheckConfig] = []
+    for module_name in module_order:
+        module_checks = grouped[module_name]
+        module_root = project_root / module_name
+        standard_checks = [check for check in module_checks if check.kind in STANDARD_KINDS]
+        custom_checks = [check for check in module_checks if check.kind not in STANDARD_KINDS]
+        standard_by_kind = {check.kind: check for check in standard_checks}
+        if not (module_root / "package.json").exists():
+            augmented.extend(standard_by_kind[kind] for kind in STANDARD_KINDS if kind in standard_by_kind)
+            augmented.extend(custom_checks)
+            continue
+        if not standard_checks:
+            augmented.extend(standard_by_kind[kind] for kind in STANDARD_KINDS if kind in standard_by_kind)
+            augmented.extend(custom_checks)
+            continue
+        for kind in STANDARD_KINDS:
+            existing_check = standard_by_kind.get(kind)
+            if existing_check is not None:
+                augmented.append(existing_check)
+            else:
+                augmented.append(_disabled_generated_standard_check(module_name, kind))
+        augmented.extend(custom_checks)
+    augmented.extend(passthrough_checks)
+    return augmented
+
+
 def build_config_payload(
     *,
     project_name: str,
@@ -193,6 +258,7 @@ def build_config_payload(
     if not checks:
         msg = "Analyzer did not return any runnable checks."
         raise ValueError(msg)
+    checks = _fill_missing_node_standard_checks(project_root, checks)
     _validate_generated_checks(checks)
 
     config = AgentShieldConfig(

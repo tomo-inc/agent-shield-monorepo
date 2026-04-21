@@ -80,6 +80,47 @@ def test_run_checks_marks_success(tmp_path: Path) -> None:
     assert report.status == "pass"
 
 
+def test_run_checks_parses_coverage_metrics_when_command_fails_after_writing_report(tmp_path: Path) -> None:
+    coverage_program = (
+        "from pathlib import Path; "
+        "import sys; "
+        "Path('coverage.json').write_text('{\"totals\": {\"percent_covered\": 73.5}}', encoding='utf-8'); "
+        "print('tests failed', file=sys.stderr); "
+        "raise SystemExit(1)"
+    )
+    checks = _passing_module_checks()
+    checks[-1] = CheckConfig(
+        id="coverage",
+        label="mod - coverage",
+        module="mod",
+        kind="coverage",
+        argv=[sys.executable, "-c", coverage_program],
+        coverage_parser="coverage.py-json",
+        coverage_file="coverage.json",
+    )
+    config = AgentShieldConfig(
+        project=ProjectConfig(name="demo", root=str(tmp_path)),
+        checks=checks,
+        notify=NotifyConfig(enabled=False),
+    )
+
+    report, _ = run_checks(
+        config,
+        config_path=Path(".agentshield/config.yaml"),
+        used_config_file=True,
+        strict=False,
+        run_dir=tmp_path / ".qa-agent" / "runs",
+    )
+
+    coverage_check = next(check for check in report.checks if check.kind == "coverage")
+    assert report.status == "fail"
+    assert coverage_check.status == "fail"
+    assert coverage_check.exit_code == 1
+    assert coverage_check.metrics == {"line": 73.5}
+    assert coverage_check.gate_target == 100.0
+    assert coverage_check.stderr_tail == ["tests failed"]
+
+
 def test_run_checks_preserves_shell_semantics_for_run_commands(tmp_path: Path) -> None:
     run_command = (
         f"FLAG=ok {shlex.quote(sys.executable)} -c "

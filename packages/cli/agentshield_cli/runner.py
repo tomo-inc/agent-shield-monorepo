@@ -130,19 +130,26 @@ def run_single_check(check: CheckConfig, project_root: Path) -> CheckResult:
         status = "pass" if completed.returncode == 0 else "fail"
         metrics: dict[str, float] = {}
         stderr_tail = _tail_lines(completed.stderr)
-        if status == "pass" and check.coverage_parser and coverage_path is not None:
+        if check.coverage_parser and coverage_path is not None and (
+            status == "pass" or coverage_path.exists()
+        ):
             try:
                 metrics = parse_coverage_metrics(check.coverage_parser, coverage_path)
                 gate_target = DEFAULT_LINE_COVERAGE_GATE
                 line_coverage = metrics.get("line")
-                if line_coverage is not None and line_coverage + 1e-9 < DEFAULT_LINE_COVERAGE_GATE:
+                if (
+                    status == "pass"
+                    and line_coverage is not None
+                    and line_coverage + 1e-9 < DEFAULT_LINE_COVERAGE_GATE
+                ):
                     status = "fail"
                     stderr_tail.append(
                         coverage_gate_message("line", line_coverage, DEFAULT_LINE_COVERAGE_GATE)
                     )
             except (FileNotFoundError, ValueError) as exc:
-                status = "fail"
-                stderr_tail.append(str(exc))
+                if status == "pass":
+                    status = "fail"
+                    stderr_tail.append(str(exc))
         return CheckResult(
             id=check.id,
             label=check.label,

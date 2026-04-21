@@ -170,3 +170,62 @@ def test_select_failure_reason_detects_vitest_environment_install_drift(tmp_path
         "`happy-dom` is declared in `apps/web/package.json` but is not installed in the current "
         "workspace. Run `pnpm install --frozen-lockfile` from the repo root to sync dependencies."
     )
+
+
+def test_select_failure_reason_detects_standalone_module_binary_install_drift(tmp_path: Path) -> None:
+    module_root = tmp_path / "auth"
+    module_root.mkdir(parents=True)
+    (module_root / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n", encoding="utf-8")
+    (module_root / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "@demo/auth",
+                "packageManager": "pnpm@10.11.0",
+                "dependencies": {
+                    "next": "^15.0.0",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    check = CheckResult(
+        id="auth-build",
+        label="auth - build",
+        module="auth",
+        kind="build",
+        command="pnpm run build",
+        status="fail",
+        exit_code=127,
+        duration_sec=0.2,
+        stderr_tail=["sh: next: command not found"],
+    )
+
+    reason = select_failure_reason(check, project_root=tmp_path)
+
+    assert reason == (
+        "`next` is declared in `auth/package.json` but is not installed in the current "
+        "workspace. Run `pnpm install --frozen-lockfile` in `auth` to sync dependencies."
+    )
+
+
+def test_select_failure_reason_skips_generic_elifecycle_wrapper() -> None:
+    check = CheckResult(
+        id="auth-test",
+        label="auth - test",
+        module="auth",
+        kind="test",
+        command="pnpm run test:unit",
+        status="fail",
+        exit_code=1,
+        duration_sec=0.5,
+        stderr_tail=[
+            "AssertionError [ERR_ASSERTION]: expected rejection",
+            "✖ verifyRefreshToken rejects an internal JWT (type !== refresh) (1.22ms)",
+            " ELIFECYCLE  Command failed with exit code 1.",
+        ],
+    )
+
+    reason = select_failure_reason(check)
+
+    assert reason == "✖ verifyRefreshToken rejects an internal JWT (type !== refresh) (1.22ms)"

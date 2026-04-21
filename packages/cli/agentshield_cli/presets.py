@@ -21,6 +21,13 @@ VITEST_COVERAGE_PACKAGES = {
     "@vitest/coverage-istanbul": "istanbul",
     "@vitest/coverage-v8": "v8",
 }
+C8_PACKAGE_SPEC = "c8@10.1.3"
+PREFERRED_NODE_TEST_SCRIPTS = (
+    "test:unit",
+    "test-unit",
+    "test:unit:ci",
+    "test-unit-ci",
+)
 PYTHON_TOOL_GROUPS = {"dev", "lint", "qa", "test", "tests", "typecheck"}
 NODE_SCRIPT_CHECKS: tuple[tuple[Literal["build", "lint", "typecheck"], str], ...] = (
     ("build", "build"),
@@ -32,6 +39,19 @@ PACKAGE_MANAGER_LOCKFILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("yarn", ("yarn.lock",)),
     ("bun", ("bun.lock", "bun.lockb")),
     ("npm", ("package-lock.json", "npm-shrinkwrap.json")),
+)
+ESLINT_CONFIG_FILES = (
+    "eslint.config.js",
+    "eslint.config.cjs",
+    "eslint.config.mjs",
+    "eslint.config.ts",
+    ".eslintrc",
+    ".eslintrc.js",
+    ".eslintrc.cjs",
+    ".eslintrc.mjs",
+    ".eslintrc.json",
+    ".eslintrc.yaml",
+    ".eslintrc.yml",
 )
 
 
@@ -58,6 +78,17 @@ class PythonModuleFacts:
         for names in self.optional_dependency_groups.values():
             combined.update(names)
         return combined
+
+
+@dataclass(frozen=True)
+class PythonModuleContext:
+    facts: PythonModuleFacts
+    manifest_root: str
+    cwd: str
+    inherited: bool
+    source_target: str | None
+    source_root: str | None
+    test_targets: list[str]
 
 
 @dataclass(frozen=True)
@@ -156,8 +187,135 @@ def _existing_relative_dirs(module_root: Path, candidates: list[str]) -> list[st
 
 
 def _relative_generated_path(module_path: str, *parts: str) -> str:
-    root_prefix = Path(*([".."] * len(Path(module_path).parts)))
+    return _relative_generated_path_for_cwd(module_path, *parts)
+
+
+def _relative_generated_path_for_cwd(cwd: str, *parts: str) -> str:
+    root_prefix = Path(*([".."] * len(Path(cwd).parts)))
     return (root_prefix / ".qa-agent" / "generated" / Path(*parts)).as_posix()
+
+
+def _path_depth(path: str) -> int:
+    return len([part for part in Path(path).parts if part not in {"."}])
+
+
+def _normalize_relative_path(path: Path) -> str:
+    value = path.as_posix()
+    return "." if value in {"", "."} else value
+
+
+def _is_relative_to(path: Path, other: Path) -> bool:
+    try:
+        path.relative_to(other)
+    except ValueError:
+        return False
+    return True
+
+
+def _find_nearest_pyproject_root(project_root: Path, module_path: str) -> Path | None:
+    current = (project_root / module_path).resolve()
+    project_root = project_root.resolve()
+    while _is_relative_to(current, project_root):
+        if (current / "pyproject.toml").exists():
+            return current
+        if current == project_root:
+            break
+        current = current.parent
+    return None
+
+
+def _resolve_python_source_target(
+    module_relative_path: str,
+    source_paths: list[str],
+) -> tuple[str | None, str | None]:
+    module_path = Path(module_relative_path)
+    parent_matches = [
+        source_path
+        for source_path in source_paths
+        if _is_relative_to(module_path, Path(source_path))
+    ]
+    if parent_matches:
+        source_root = max(parent_matches, key=_path_depth)
+        return module_relative_path, source_root
+
+    child_matches = [
+        source_path
+        for source_path in source_paths
+        if _is_relative_to(Path(source_path), module_path)
+    ]
+    if child_matches:
+        source_target = min(child_matches, key=_path_depth)
+        return source_target, source_target
+
+    return None, None
+
+
+def _dedupe_paths(paths: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        unique.append(path)
+    return unique
+
+
+def _resolve_python_module_context(project_root: Path, module_path: str) -> PythonModuleContext | None:
+    manifest_root = _find_nearest_pyproject_root(project_root, module_path)
+    if manifest_root is None:
+        return None
+
+    manifest_root_relative = _normalize_relative_path(manifest_root.relative_to(project_root.resolve()))
+    facts = _load_python_module_facts(project_root, manifest_root_relative)
+    if facts is None:
+        return None
+
+    inherited = manifest_root_relative != module_path
+    if not inherited:
+        return PythonModuleContext(
+            facts=facts,
+            manifest_root=manifest_root_relative,
+            cwd=module_path,
+            inherited=False,
+            source_target=None,
+            source_root=None,
+            test_targets=[],
+        )
+
+    module_root = (project_root / module_path).resolve()
+    module_relative_path = _normalize_relative_path(module_root.relative_to(manifest_root))
+    source_target, source_root = _resolve_python_source_target(module_relative_path, facts.source_paths)
+
+    test_targets: list[str] = []
+    if source_target is not None and source_root is not None:
+        relative_inside_source = _normalize_relative_path(Path(source_target).relative_to(Path(source_root)))
+        for test_root in facts.test_paths:
+            candidate = Path(test_root)
+            if relative_inside_source != ".":
+                candidate = candidate / relative_inside_source
+            if (manifest_root / candidate).exists():
+                test_targets.append(candidate.as_posix())
+
+    if source_target is None and not test_targets:
+        return None
+
+    return PythonModuleContext(
+        facts=facts,
+        manifest_root=manifest_root_relative,
+        cwd=manifest_root_relative,
+        inherited=True,
+        source_target=source_target,
+        source_root=source_root,
+        test_targets=_dedupe_paths(test_targets),
+    )
+
+
+def _python_manifest_reference(context: PythonModuleContext, module_path: str) -> str:
+    manifest_ref = "pyproject.toml" if context.manifest_root == "." else f"{context.manifest_root}/pyproject.toml"
+    if not context.inherited:
+        return f"`{manifest_ref}`"
+    return f"`{manifest_ref}` inherited by `{module_path}`"
 
 
 def _normalize_package_manager(value: object) -> str | None:
@@ -225,11 +383,90 @@ def _package_manager_exec_argv(package_manager: str, command: list[str]) -> list
     return [package_manager, "exec", *command]
 
 
+def _package_name_from_spec(package_spec: str) -> str:
+    if package_spec.startswith("@") and package_spec.count("@") >= 2:
+        return package_spec.rsplit("@", 1)[0]
+    return package_spec.split("@", 1)[0]
+
+
+def _package_manager_dlx_argv(package_manager: str, package_spec: str, args: list[str]) -> list[str]:
+    if package_manager == "npm":
+        return [
+            "npm",
+            "exec",
+            "--yes",
+            f"--package={package_spec}",
+            "--",
+            _package_name_from_spec(package_spec),
+            *args,
+        ]
+    if package_manager == "bun":
+        return ["bunx", package_spec, *args]
+    if package_manager == "yarn":
+        return ["yarn", "dlx", package_spec, *args]
+    return [package_manager, "dlx", package_spec, *args]
+
+
 def _is_placeholder_test_script(script: str) -> bool:
     lowered = script.lower()
     if any(marker in lowered for marker in PLACEHOLDER_TEST_MARKERS):
         return True
     return re.search(r"\bno\b.*\btests?\b", lowered) is not None
+
+
+def _select_node_test_script(scripts: dict[str, str]) -> str | None:
+    exact_test = scripts.get("test")
+    if exact_test and not _is_placeholder_test_script(exact_test):
+        return "test"
+
+    for script_name in PREFERRED_NODE_TEST_SCRIPTS:
+        script = scripts.get(script_name)
+        if script and not _is_placeholder_test_script(script):
+            return script_name
+
+    candidates = [
+        script_name
+        for script_name, script in scripts.items()
+        if script_name != "test"
+        and (script_name.startswith("test:") or script_name.startswith("test-"))
+        and not _is_placeholder_test_script(script)
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def _is_node_builtin_test_command(script: str) -> bool:
+    tokens = re.findall(r"\S+", script.lower())
+    saw_node = False
+    for token in tokens:
+        binary_name = token.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        if binary_name in {"node", "node.exe"}:
+            saw_node = True
+            continue
+        if saw_node and token == "--test":
+            return True
+    return False
+
+
+def _can_infer_node_typecheck(module_root: Path, facts: NodeModuleFacts) -> bool:
+    dependency_names = facts.dependencies | facts.dev_dependencies
+    return "typescript" in dependency_names and (module_root / "tsconfig.json").exists()
+
+
+def _infer_node_lint_argv(
+    module_root: Path,
+    package_data: dict[str, Any] | None,
+    facts: NodeModuleFacts,
+) -> list[str] | None:
+    if not _has_eslint_config(module_root, package_data):
+        return None
+    dependency_names = facts.dependencies | facts.dev_dependencies
+    if "next" in dependency_names and "eslint" in dependency_names:
+        return _package_manager_exec_argv(facts.package_manager, ["next", "lint"])
+    if "eslint" in dependency_names:
+        return _package_manager_exec_argv(facts.package_manager, ["eslint", "."])
+    return None
 
 
 def _load_node_module_facts(project_root: Path, module_path: str) -> NodeModuleFacts | None:
@@ -250,6 +487,26 @@ def _load_node_module_facts(project_root: Path, module_path: str) -> NodeModuleF
         dependencies=_dict_keys(package_data.get("dependencies")),
         dev_dependencies=_dict_keys(package_data.get("devDependencies")),
     )
+
+
+def _has_eslint_config(module_root: Path, package_data: dict[str, Any] | None) -> bool:
+    if package_data is not None and isinstance(package_data.get("eslintConfig"), dict):
+        return True
+    return any((module_root / config_name).exists() for config_name in ESLINT_CONFIG_FILES)
+
+
+def _should_skip_interactive_next_lint(
+    module_root: Path,
+    package_data: dict[str, Any] | None,
+    script_name: str,
+    script_command: str,
+) -> bool:
+    if script_name != "lint":
+        return False
+    normalized = script_command.strip().lower()
+    if normalized != "next lint":
+        return False
+    return not _has_eslint_config(module_root, package_data)
 
 
 def _load_python_module_facts(project_root: Path, module_path: str) -> PythonModuleFacts | None:
@@ -316,7 +573,12 @@ def _load_go_module_facts(project_root: Path, module_path: str) -> GoModuleFacts
     return GoModuleFacts(has_module_file=True)
 
 
-def _python_uv_run_prefix(facts: PythonModuleFacts, required_tools: set[str]) -> list[str]:
+def _python_uv_run_prefix(
+    facts: PythonModuleFacts,
+    required_tools: set[str],
+    *,
+    with_tools: list[str] | None = None,
+) -> list[str]:
     prefix = ["uv", "run"]
     extras = sorted(
         group_name
@@ -325,17 +587,38 @@ def _python_uv_run_prefix(facts: PythonModuleFacts, required_tools: set[str]) ->
     )
     for extra in extras:
         prefix.extend(["--extra", extra])
+    for tool in with_tools or []:
+        prefix.extend(["--with", tool])
     return prefix
+
+
+def _default_python_type_targets(context: PythonModuleContext) -> list[str]:
+    facts = context.facts
+    if not context.inherited:
+        return facts.pyright_include or facts.source_paths or ["."]
+    if context.source_target is not None:
+        return [context.source_target]
+    return facts.pyright_include or facts.source_paths or ["."]
 
 
 def _build_node_checks(module_path: str, project_root: Path) -> list[CheckConfig]:
     facts = _load_node_module_facts(project_root, module_path)
     if facts is None:
         return []
+    module_root = project_root / module_path
+    package_data = _load_json_file(module_root / "package.json")
+    module_slug = _slug(module_path) or "root"
 
     checks: list[CheckConfig] = []
     for kind, script_name in NODE_SCRIPT_CHECKS:
         if script_name not in facts.scripts:
+            continue
+        if _should_skip_interactive_next_lint(
+            module_root,
+            package_data,
+            script_name,
+            facts.scripts[script_name],
+        ):
             continue
         checks.append(
             CheckConfig(
@@ -348,15 +631,42 @@ def _build_node_checks(module_path: str, project_root: Path) -> list[CheckConfig
             )
         )
 
-    test_script = facts.scripts.get("test")
-    if test_script and not _is_placeholder_test_script(test_script):
+    if not any(check.kind == "lint" for check in checks):
+        inferred_lint_argv = _infer_node_lint_argv(module_root, package_data, facts)
+        if inferred_lint_argv is not None:
+            checks.append(
+                CheckConfig(
+                    id=_check_id(module_path, "lint"),
+                    label=f"{module_path} - lint",
+                    module=module_path,
+                    kind="lint",
+                    argv=inferred_lint_argv,
+                    cwd=module_path,
+                )
+            )
+
+    if "typecheck" not in facts.scripts and _can_infer_node_typecheck(module_root, facts):
+        checks.append(
+            CheckConfig(
+                id=_check_id(module_path, "typecheck"),
+                label=f"{module_path} - typecheck",
+                module=module_path,
+                kind="typecheck",
+                argv=_package_manager_exec_argv(facts.package_manager, ["tsc", "--noEmit"]),
+                cwd=module_path,
+            )
+        )
+
+    test_script_name = _select_node_test_script(facts.scripts)
+    test_script = facts.scripts.get(test_script_name) if test_script_name is not None else None
+    if test_script_name is not None:
         checks.append(
             CheckConfig(
                 id=_check_id(module_path, "test"),
                 label=f"{module_path} - test",
                 module=module_path,
                 kind="test",
-                argv=_package_manager_run_argv(facts.package_manager, "test"),
+                argv=_package_manager_run_argv(facts.package_manager, test_script_name),
                 cwd=module_path,
                 timeout_sec=1800,
             )
@@ -369,7 +679,7 @@ def _build_node_checks(module_path: str, project_root: Path) -> list[CheckConfig
             coverage_provider = provider
             break
     if "vitest" in dependency_names and coverage_provider is not None:
-        coverage_dir = _relative_generated_path(module_path, "coverage", _slug(module_path))
+        coverage_dir = _relative_generated_path(module_path, "coverage", module_slug)
         checks.append(
             CheckConfig(
                 id=_check_id(module_path, "coverage"),
@@ -394,19 +704,54 @@ def _build_node_checks(module_path: str, project_root: Path) -> list[CheckConfig
                 timeout_sec=1800,
             )
         )
+    elif test_script_name is not None and test_script is not None and _is_node_builtin_test_command(test_script):
+        coverage_dir = _relative_generated_path(module_path, "coverage", module_slug)
+        checks.append(
+            CheckConfig(
+                id=_check_id(module_path, "coverage"),
+                label=f"{module_path} - coverage",
+                module=module_path,
+                kind="coverage",
+                argv=_package_manager_dlx_argv(
+                    facts.package_manager,
+                    C8_PACKAGE_SPEC,
+                    [
+                        "--reporter=json-summary",
+                        "--reporter=text",
+                        "--reports-dir",
+                        coverage_dir,
+                        *_package_manager_run_argv(facts.package_manager, test_script_name),
+                    ],
+                ),
+                cwd=module_path,
+                coverage_parser="istanbul-summary",
+                coverage_file=f"{coverage_dir}/coverage-summary.json",
+                timeout_sec=1800,
+            )
+        )
 
     return checks
 
 
 def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConfig]:
-    facts = _load_python_module_facts(project_root, module_path)
-    if facts is None:
+    context = _resolve_python_module_context(project_root, module_path)
+    if context is None:
         return []
+    facts = context.facts
+    has_inherited_targets = context.inherited and bool(context.source_target is not None or context.test_targets)
 
     checks: list[CheckConfig] = []
-    lint_targets = facts.source_paths + facts.test_paths
-    if not lint_targets:
-        lint_targets = ["."]
+    cwd = context.cwd
+    if context.inherited:
+        lint_targets = _dedupe_paths(
+            ([context.source_target] if context.source_target is not None else []) + context.test_targets
+        )
+        if not lint_targets and context.source_target is not None:
+            lint_targets = [context.source_target]
+    else:
+        lint_targets = facts.source_paths + facts.test_paths
+        if not lint_targets:
+            lint_targets = ["."]
 
     if facts.has_build_system:
         checks.append(
@@ -416,7 +761,7 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="build",
                 argv=["uv", "build", "."],
-                cwd=module_path,
+                cwd=cwd,
             )
         )
 
@@ -428,7 +773,7 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="lint",
                 argv=[*_python_uv_run_prefix(facts, {"ruff"}), "ruff", "check", *lint_targets],
-                cwd=module_path,
+                cwd=cwd,
             )
         )
     elif "black" in facts.all_dependencies:
@@ -439,12 +784,23 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="lint",
                 argv=[*_python_uv_run_prefix(facts, {"black"}), "black", "--check", *lint_targets],
-                cwd=module_path,
+                cwd=cwd,
+            )
+        )
+    elif has_inherited_targets:
+        checks.append(
+            CheckConfig(
+                id=_check_id(module_path, "lint"),
+                label=f"{module_path} - lint",
+                module=module_path,
+                kind="lint",
+                argv=[*_python_uv_run_prefix(facts, set(), with_tools=["ruff"]), "ruff", "check", *lint_targets],
+                cwd=cwd,
             )
         )
 
     if "pyright" in facts.all_dependencies:
-        type_targets = facts.pyright_include or facts.source_paths + facts.test_paths or ["."]
+        type_targets = _default_python_type_targets(context)
         checks.append(
             CheckConfig(
                 id=_check_id(module_path, "typecheck"),
@@ -452,11 +808,14 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="typecheck",
                 argv=[*_python_uv_run_prefix(facts, {"pyright"}), "pyright", *type_targets],
-                cwd=module_path,
+                cwd=cwd,
             )
         )
     elif "mypy" in facts.all_dependencies:
-        type_targets = facts.source_paths or ["."]
+        if context.inherited and context.source_target is not None:
+            type_targets = [context.source_target]
+        else:
+            type_targets = facts.source_paths or ["."]
         checks.append(
             CheckConfig(
                 id=_check_id(module_path, "typecheck"),
@@ -464,11 +823,26 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="typecheck",
                 argv=[*_python_uv_run_prefix(facts, {"mypy"}), "mypy", *type_targets],
-                cwd=module_path,
+                cwd=cwd,
+            )
+        )
+    elif has_inherited_targets:
+        type_targets = _default_python_type_targets(context)
+        checks.append(
+            CheckConfig(
+                id=_check_id(module_path, "typecheck"),
+                label=f"{module_path} - typecheck",
+                module=module_path,
+                kind="typecheck",
+                argv=[*_python_uv_run_prefix(facts, set(), with_tools=["pyright"]), "pyright", *type_targets],
+                cwd=cwd,
             )
         )
 
-    pytest_args = facts.test_paths or ["tests"]
+    if context.inherited:
+        pytest_args = context.test_targets or ([context.source_target] if context.source_target is not None else [])
+    else:
+        pytest_args = facts.test_paths or ["tests"]
     if "pytest" in facts.all_dependencies:
         checks.append(
             CheckConfig(
@@ -477,14 +851,19 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="test",
                 argv=[*_python_uv_run_prefix(facts, {"pytest"}), "pytest", *pytest_args],
-                cwd=module_path,
+                cwd=cwd,
                 timeout_sec=1800,
             )
         )
 
-    if "pytest" in facts.all_dependencies and "pytest-cov" in facts.all_dependencies and facts.source_paths:
-        coverage_target = facts.source_paths[0]
-        coverage_file = _relative_generated_path(module_path, "coverage", _slug(module_path), "coverage.json")
+    coverage_target = context.source_target if context.inherited else (facts.source_paths[0] if facts.source_paths else None)
+    coverage_prefix: list[str] | None = None
+    if "pytest" in facts.all_dependencies and "pytest-cov" in facts.all_dependencies and coverage_target is not None:
+        coverage_prefix = _python_uv_run_prefix(facts, {"pytest", "pytest-cov"})
+    elif "pytest" in facts.all_dependencies and context.inherited and coverage_target is not None:
+        coverage_prefix = _python_uv_run_prefix(facts, {"pytest"}, with_tools=["pytest-cov"])
+    if coverage_prefix is not None:
+        coverage_file = _relative_generated_path_for_cwd(cwd, "coverage", _slug(module_path), "coverage.json")
         checks.append(
             CheckConfig(
                 id=_check_id(module_path, "coverage"),
@@ -492,13 +871,13 @@ def _build_python_checks(module_path: str, project_root: Path) -> list[CheckConf
                 module=module_path,
                 kind="coverage",
                 argv=[
-                    *_python_uv_run_prefix(facts, {"pytest", "pytest-cov"}),
+                    *coverage_prefix,
                     "pytest",
                     f"--cov={coverage_target}",
                     f"--cov-report=json:{coverage_file}",
                     *pytest_args,
                 ],
-                cwd=module_path,
+                cwd=cwd,
                 coverage_parser="coverage.py-json",
                 coverage_file=coverage_file,
                 timeout_sec=1800,
@@ -657,14 +1036,46 @@ def _explain_missing_node_checks(module_path: str, project_root: Path) -> dict[s
     facts = _load_node_module_facts(project_root, module_path)
     if facts is None:
         return {}
+    module_root = project_root / module_path
+    package_data = _load_json_file(module_root / "package.json")
 
     reasons: dict[str, str] = {}
+    lint_script = facts.scripts.get("lint")
+    if lint_script and _should_skip_interactive_next_lint(module_root, package_data, "lint", lint_script):
+        reasons["lint"] = (
+            f"`{module_path}/package.json` uses `next lint` but no ESLint config was found in `{module_path}`. "
+            "AgentShield skipped the lint step to avoid Next.js interactive setup."
+        )
+    elif lint_script is None and _infer_node_lint_argv(module_root, package_data, facts) is None:
+        if _has_eslint_config(module_root, package_data):
+            reasons["lint"] = (
+                f"`{module_path}/package.json` does not define a `lint` script and its dependencies do not "
+                "expose an inferable ESLint runner, so AgentShield could not generate a lint step."
+            )
+        else:
+            reasons["lint"] = (
+                f"`{module_path}/package.json` does not define a `lint` script and no ESLint config was found "
+                f"in `{module_path}`, so AgentShield could not generate a lint step."
+            )
+    if "typecheck" not in facts.scripts and not _can_infer_node_typecheck(module_root, facts):
+        if "typescript" not in (facts.dependencies | facts.dev_dependencies):
+            reasons["typecheck"] = (
+                f"`{module_path}/package.json` does not define a `typecheck` script and does not include "
+                "`typescript`, so AgentShield could not generate a typecheck step."
+            )
+        elif not (module_root / "tsconfig.json").exists():
+            reasons["typecheck"] = (
+                f"`{module_path}` does not define a `typecheck` script and no `tsconfig.json` was found, "
+                "so AgentShield could not generate a typecheck step."
+            )
     test_script = facts.scripts.get("test")
     if test_script is None:
-        reasons["test"] = (
-            f"`{module_path}/package.json` does not define a `test` script, so AgentShield could not "
-            "generate a test step."
-        )
+        inferred_test_script = _select_node_test_script(facts.scripts)
+        if inferred_test_script is None:
+            reasons["test"] = (
+                f"`{module_path}/package.json` does not define a `test` script, so AgentShield could not "
+                "generate a test step."
+            )
     elif _is_placeholder_test_script(test_script):
         reasons["test"] = (
             f"`{module_path}/package.json` defines `test` as a placeholder script (`{test_script}`), "
@@ -672,12 +1083,21 @@ def _explain_missing_node_checks(module_path: str, project_root: Path) -> dict[s
         )
 
     dependency_names = facts.dependencies | facts.dev_dependencies
-    if "vitest" not in dependency_names:
+    inferred_test_script = _select_node_test_script(facts.scripts)
+    inferred_test_command = facts.scripts.get(inferred_test_script) if inferred_test_script is not None else None
+    has_node_builtin_coverage = (
+        inferred_test_command is not None and _is_node_builtin_test_command(inferred_test_command)
+    )
+    if "vitest" not in dependency_names and not has_node_builtin_coverage:
         reasons["coverage"] = (
-            f"`{module_path}/package.json` does not include `vitest`, so AgentShield could not generate "
-            "a JS coverage step."
+            f"`{module_path}/package.json` does not include `vitest`, and AgentShield could not infer a "
+            "`node --test` unit-test script for the module, so it could not generate a JS coverage step."
         )
-    elif not any(package_name in dependency_names for package_name in VITEST_COVERAGE_PACKAGES):
+    elif (
+        "vitest" in dependency_names
+        and not any(package_name in dependency_names for package_name in VITEST_COVERAGE_PACKAGES)
+        and not has_node_builtin_coverage
+    ):
         reasons["coverage"] = (
             f"`{module_path}/package.json` does not include `@vitest/coverage-v8` or "
             "`@vitest/coverage-istanbul`, so AgentShield could not generate a coverage step."
@@ -687,44 +1107,53 @@ def _explain_missing_node_checks(module_path: str, project_root: Path) -> dict[s
 
 
 def _explain_missing_python_checks(module_path: str, project_root: Path) -> dict[str, str]:
-    facts = _load_python_module_facts(project_root, module_path)
-    if facts is None:
+    context = _resolve_python_module_context(project_root, module_path)
+    if context is None:
         return {}
+    facts = context.facts
+    manifest_reference = _python_manifest_reference(context, module_path)
+    has_inherited_targets = context.inherited and bool(context.source_target is not None or context.test_targets)
+    has_inherited_coverage = context.inherited and context.source_target is not None and "pytest" in facts.all_dependencies
 
     reasons: dict[str, str] = {}
     if not facts.has_build_system:
         reasons["build"] = (
-            f"`{module_path}/pyproject.toml` does not define a build system, so AgentShield could not "
+            f"{manifest_reference} does not define a build system, so AgentShield could not "
             "generate a build step."
         )
-    if "ruff" not in facts.all_dependencies and "black" not in facts.all_dependencies:
+    if "ruff" not in facts.all_dependencies and "black" not in facts.all_dependencies and not has_inherited_targets:
         reasons["lint"] = (
-            f"`{module_path}/pyproject.toml` does not include `ruff` or `black` in dependencies or optional "
+            f"{manifest_reference} does not include `ruff` or `black` in dependencies or optional "
             "dependency groups, so AgentShield could not generate a lint step."
         )
-    if "pyright" not in facts.all_dependencies and "mypy" not in facts.all_dependencies:
+    if "pyright" not in facts.all_dependencies and "mypy" not in facts.all_dependencies and not has_inherited_targets:
         reasons["typecheck"] = (
-            f"`{module_path}/pyproject.toml` does not include `pyright` or `mypy`, so AgentShield could not "
+            f"{manifest_reference} does not include `pyright` or `mypy`, so AgentShield could not "
             "generate a typecheck step."
         )
     if "pytest" not in facts.all_dependencies:
         reasons["test"] = (
-            f"`{module_path}/pyproject.toml` does not include `pytest`, so AgentShield could not generate "
+            f"{manifest_reference} does not include `pytest`, so AgentShield could not generate "
             "a test step."
         )
     if "pytest" not in facts.all_dependencies:
         reasons["coverage"] = (
-            f"`{module_path}/pyproject.toml` does not include `pytest`, so AgentShield could not generate "
+            f"{manifest_reference} does not include `pytest`, so AgentShield could not generate "
             "a coverage step."
         )
-    elif "pytest-cov" not in facts.all_dependencies:
+    elif "pytest-cov" not in facts.all_dependencies and not has_inherited_coverage:
         reasons["coverage"] = (
-            f"`{module_path}/pyproject.toml` does not include `pytest-cov`, so AgentShield could not "
+            f"{manifest_reference} does not include `pytest-cov`, so AgentShield could not "
             "generate a coverage step."
+        )
+    elif context.inherited and context.source_target is None:
+        reasons["coverage"] = (
+            f"{manifest_reference} does not cover `{module_path}` as a detectable Python source target, "
+            "so AgentShield could not infer a coverage target."
         )
     elif not facts.source_paths:
         reasons["coverage"] = (
-            f"`{module_path}/pyproject.toml` does not expose a detectable source package path, so AgentShield "
+            f"{manifest_reference} does not expose a detectable source package path, so AgentShield "
             "could not infer a coverage target."
         )
 
@@ -763,6 +1192,8 @@ def explain_missing_standard_checks(module_path: str, project_root: Path) -> dic
     if (project_root / module_path / "package.json").exists():
         return _explain_missing_node_checks(module_path, project_root)
     if (project_root / module_path / "pyproject.toml").exists():
+        return _explain_missing_python_checks(module_path, project_root)
+    if _resolve_python_module_context(project_root, module_path) is not None:
         return _explain_missing_python_checks(module_path, project_root)
     if (project_root / module_path / "pom.xml").exists():
         return _explain_missing_java_checks(module_path, project_root)
